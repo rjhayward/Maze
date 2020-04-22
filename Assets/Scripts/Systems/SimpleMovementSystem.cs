@@ -15,10 +15,11 @@ public class SimpleMovementSystem : SystemBase
     {
         float deltaTime = Time.DeltaTime;
 
+        // system just moves any object with these filters forward by a fixed amount each frame
         Entities.WithNone<IsAlive>() //exclude IsAlive
-            .ForEach((ref Translation translation, ref Direction direction) =>
+            .ForEach((ref LocalToWorld localToWorld, ref Translation translation) =>
         {
-            translation.Value += direction.Value * deltaTime; 
+            translation.Value += localToWorld.Up * 2 * deltaTime;
         }).ScheduleParallel();
 
     }

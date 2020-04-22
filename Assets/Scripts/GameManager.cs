@@ -12,82 +12,88 @@ using Unity.Mathematics;
 public class GameManager : MonoBehaviour
 {
 
-    //[SerializeField] private Mesh Mesh;
-    //[SerializeField] private Material Material;
-
-    public Maze maze;
-
-    EntityManager entityManager;
-    NativeArray<Entity> entities;
-    EntityArchetype mazeArchetype;
+    [SerializeField] private Mesh shipMesh;
+    [SerializeField] private Material shipMaterial;
 
     // Start is called before the first frame update
     void Start()
     {
-        entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+        EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
         // create entity archetypes
 
-        EntityArchetype shipArchetype = entityManager.CreateArchetype(
-
-            typeof(RenderMesh), typeof(LocalToWorld), typeof(RenderBounds), // required components to render
-            typeof(IsShip),
-            typeof(Direction),
-            typeof(Translation)
-        );
-
+        // unused
         EntityArchetype projectileArchetype = entityManager.CreateArchetype(
 
             typeof(RenderMesh), typeof(LocalToWorld), typeof(RenderBounds), // required components to render
-            typeof(Direction),
             typeof(Translation)
         );
 
         EntityArchetype boidArchetype = entityManager.CreateArchetype(
 
             typeof(RenderMesh), typeof(LocalToWorld), typeof(RenderBounds), // required components to render
-            typeof(Direction),
             typeof(Translation),
             typeof(ViewAngle),
             typeof(IsAlive)
         );
 
-        mazeArchetype = entityManager.CreateArchetype(
 
-            //typeof(RenderMesh), typeof(LocalToWorld), typeof(RenderBounds), // required components to render
-            //typeof(MeshData),
-            typeof(IntBufferElement),
-            typeof(Float3BufferElement),
+
+
+
+        // TODO split these into separate functions
+
+        EntityArchetype shipArchetype = entityManager.CreateArchetype(
+
+            typeof(RenderMesh), typeof(LocalToWorld), typeof(RenderBounds), // required components to render
+            typeof(Translation),
+            typeof(Rotation),
+            typeof(IsShip)
+        );
+
+        Entity shipEntity = entityManager.CreateEntity(shipArchetype);
+
+        entityManager.SetSharedComponentData(shipEntity, new RenderMesh
+        {
+            mesh = shipMesh,
+            material = shipMaterial
+        }); 
+        
+        entityManager.SetComponentData(shipEntity, new Rotation
+        {
+            Value = Quaternion.Euler(90,0,0)
+        });
+
+
+
+
+        // TODO split these into separate functions
+
+        EntityArchetype mazeArchetype = entityManager.CreateArchetype(
+            typeof(IntBufferElement), //Triangles
+            typeof(Float3BufferElement), //Vertices
             typeof(Translation),
             typeof(Seed)
         );
 
-        entities = new NativeArray<Entity>(1000, Allocator.Persistent);
+        NativeArray<Entity> mazeEntities = new NativeArray<Entity>(1000, Allocator.Persistent);
 
-        entityManager.CreateEntity(mazeArchetype, entities);
+        entityManager.CreateEntity(mazeArchetype, mazeEntities);
 
-        for (int i = 0; i < entities.Length; i++)
+        for (int i = 0; i < mazeEntities.Length; i++)
         {
-            entityManager.SetComponentData(entities[i], new Translation
+            entityManager.SetComponentData(mazeEntities[i], new Translation
             {
                 Value = new Vector3(UnityEngine.Random.Range(-100f, 100f), 0, UnityEngine.Random.Range(-100f, 100f))
             });
 
-            entityManager.AddBuffer<IntBufferElement>(entities[i]);
+            entityManager.AddBuffer<IntBufferElement>(mazeEntities[i]);
 
-            entityManager.AddBuffer<Float3BufferElement>(entities[i]);
-
-            //DynamicBuffer<Float3BufferElement> vertices = entityManager.GetBuffer<Float3BufferElement>(entities[i]);
-            ////vertices.Capacity = 1000;
-
-            //DynamicBuffer<IntBufferElement> triangles = entityManager.GetBuffer<IntBufferElement>(entities[i]);
-            ////triangles.Capacity = 1000;0
-
-
+            entityManager.AddBuffer<Float3BufferElement>(mazeEntities[i]);
 
         }
 
-        entities.Dispose();
+        mazeEntities.Dispose();
 
     }
 
@@ -96,90 +102,6 @@ public class GameManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //if (true) // if updateMaze 
-        //{
-
-        //    //entities = new NativeArray<Entity>(10, Allocator.Temp);
-
-        //    //entityManager.CreateEntity(mazeArchetype, entities);
-
-        //    //for (int i = 0; i < entities.Length; i++)
-        //    //{
-        //    //    entityManager.DestroyEntity(entities[i]);
-        //    //}
-
-        //    maze.mesh.Clear();
-
-
-        //    entities = new NativeArray<Entity>(10, Allocator.Persistent);
-
-        //    //entityManager.CreateEntity(mazeArchetype, entities);
-
-
-        //    // EntityQuery
-
-        //    //EntityQuery entityQuery = CreateEntityQuery(typeof(Seed));
-
-        //    //NativeArray <Entity> ents = ToEntityArray(Allocator.TempJob);
-
-
-        //    for (int i = 0; i < entities.Length; i++)
-        //    {
-
-
-        //        Vector3[] originalVertices = maze.mesh.vertices;
-        //        int[] originalTriangles = maze.mesh.triangles;
-        //        DynamicBuffer<Float3BufferElement> vertices = entityManager.GetBuffer<Float3BufferElement>(entities[i]);
-
-        //        DynamicBuffer<IntBufferElement> triangles = entityManager.GetBuffer<IntBufferElement>(entities[i]);
-
-        //        Vector3[] verticesToWrite = new Vector3[vertices.Length + originalVertices.Length];
-        //        int[] trianglesToWrite = new int[triangles.Length + originalTriangles.Length];
-
-        //        for (int j = 0; j < vertices.Length + originalVertices.Length; j++)
-        //        {
-        //            if (j < originalVertices.Length)
-        //            {
-        //                verticesToWrite[j] = originalVertices[j];
-        //            }
-        //            else
-        //            {
-        //                verticesToWrite[j] = vertices[j - originalVertices.Length].Value;
-        //            }
-        //        }
-
-        //        for (int j = 0; j < triangles.Length + originalTriangles.Length; j++)
-        //        {
-        //            if (j < originalTriangles.Length)
-        //            {
-        //                trianglesToWrite[j] = originalTriangles[j];
-        //            }
-        //            else
-        //            {
-        //                trianglesToWrite[j] = triangles[j - originalTriangles.Length].Value + originalVertices.Length;
-        //            }
-        //        }
-
-        //        maze.mesh.vertices = verticesToWrite;
-        //        maze.mesh.triangles = trianglesToWrite;
-
-
-        //        entityManager.SetComponentData(entities[i], new Translation
-        //        {
-        //            Value = new Vector3(UnityEngine.Random.Range(-100f, 100f), 0, UnityEngine.Random.Range(-100f, 100f))
-        //        });
-
-        //        entityManager.AddBuffer<IntBufferElement>(entities[i]);
-
-        //        entityManager.AddBuffer<Float3BufferElement>(entities[i]);
-
-        //    }
-
-
-        //    maze.mesh.RecalculateBounds();
-        //    maze.mesh.RecalculateNormals();
-
-        //}
-
+       
     }
 }

@@ -12,10 +12,9 @@ public class MazeGeneratorSystem : SystemBase
 {
     // On start create 2 native arrays: verts and tris
 
-
     // On update fill the entities with new mesh values if key is pressed
     // Stitch the meshes together into the native arrays
-
+    // Update the maze's mesh with this one stitched mesh (mesh update is expensive)
 
 
 
@@ -26,44 +25,8 @@ public class MazeGeneratorSystem : SystemBase
 
         maze.mesh.Clear();
 
-        //    for (int i = 0; i < entities.Length; i++)
-        //    {
-
-        //        Vector3[] originalVertices = maze.mesh.vertices;
-        //        int[] originalTriangles = maze.mesh.triangles;
-
-        //        Vector3[] verticesToWrite = new Vector3[vertices.Length + originalVertices.Length];
-        //        int[] trianglesToWrite = new int[triangles.Length + originalTriangles.Length];
-
-        //        for (int j = 0; j < vertices.Length + originalVertices.Length; j++)
-        //        {
-        //            if (j < originalVertices.Length)
-        //            {
-        //                verticesToWrite[j] = originalVertices[j];
-        //            }
-        //            else
-        //            {
-        //                verticesToWrite[j] = vertices[j - originalVertices.Length].Value;
-        //            }
-        //        }
-
-        //        for (int j = 0; j < triangles.Length + originalTriangles.Length; j++)
-        //        {
-        //            if (j < originalTriangles.Length)
-        //            {
-        //                trianglesToWrite[j] = originalTriangles[j];
-        //            }
-        //            else
-        //            {
-        //                trianglesToWrite[j] = triangles[j - originalTriangles.Length].Value + originalVertices.Length;
-        //            }
-        //        }
-
-
-        //    }
-
-        maze.mesh.vertices = mazeVertices;
-        maze.mesh.triangles = mazeTriangles;
+        maze.mesh.SetVertices(mazeVertices);
+        maze.mesh.SetTriangles(mazeTriangles, 0); //submesh 0
 
         maze.mesh.RecalculateBounds();
         maze.mesh.RecalculateNormals();
@@ -89,28 +52,28 @@ public class MazeGeneratorSystem : SystemBase
 
         float deltaTime = Time.DeltaTime;
 
-        bool isKeyPressed = Input.GetKeyDown(KeyCode.Space);
+        bool mazeNeedsUpdate = Input.GetKeyDown(KeyCode.Space);
 
-        NativeArray<Entity> entities = new NativeArray<Entity>(1000, Allocator.TempJob);
-
-        NativeArray<int> numberOfVertsArray = new NativeArray<int>(entities.Length, Allocator.TempJob);
-        NativeArray<int> numberOfTrisArray = new NativeArray<int>(entities.Length, Allocator.TempJob);
+        NativeArray<int> numberOfVertsArray = new NativeArray<int>(1000, Allocator.TempJob);
+        NativeArray<int> numberOfTrisArray = new NativeArray<int>(1000, Allocator.TempJob);
 
         NativeArray<int> randSeed = new NativeArray<int>(1, Allocator.TempJob);
         randSeed[0] = UnityEngine.Random.Range(0,177); //arbitrary random seed
 
+        // assigns mesh data to each entity (currently just a placeholder mesh)
         Entities.ForEach((Entity entity, int entityInQueryIndex, DynamicBuffer < IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices, 
             ref Translation translation, ref Seed seed) =>
         {
             float v = 0;
 
-            entities[entityInQueryIndex] = entity;
+            //entities[entityInQueryIndex] = entity;
 
 
-            if (isKeyPressed)
+            if (mazeNeedsUpdate)
             {
                 var random = new Unity.Mathematics.Random((uint)(entity.Index + entityInQueryIndex + randSeed[0] + 1) * 0x9F6ABC1);
                 var randomVector = math.normalizesafe(random.NextFloat3() - new float3(0.5f, 0.5f, 0.5f));
+                randomVector.y = 0;
                 translation.Value = randomVector * 100; //new Vector3((new Unity.Mathematics.Random((uint)(entityInQueryIndex+ (randSeed[0]++)))).NextFloat(-100f, 100f), 0, (new Unity.Mathematics.Random((uint)(entityInQueryIndex + (randSeed[1]++)))).NextFloat(-100f, 100f));
 
                 if (Vertices.Length < 2 * (pipeSegments - 1))
@@ -224,9 +187,7 @@ public class MazeGeneratorSystem : SystemBase
         // Stitch together meshes
         Entities.ForEach((int entityInQueryIndex, DynamicBuffer<IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices) =>
         {
-            //Vector3[] verticesToWrite = new Vector3[Vertices.Length + mazeVertices.Length];
-            //int[] trianglesToWrite = new int[Triangles.Length + mazeTriangles.Length];
-            if (isKeyPressed)
+            if (mazeNeedsUpdate)
             {
                 int cumulativeNumVerts = 0;
 
@@ -269,7 +230,7 @@ public class MazeGeneratorSystem : SystemBase
 
         CompleteDependency();
 
-        if (isKeyPressed)
+        if (mazeNeedsUpdate)
         {
             UpdateMesh(mazeVertices.ToArray(), mazeTriangles.ToArray());
         }
@@ -278,7 +239,6 @@ public class MazeGeneratorSystem : SystemBase
 
         numberOfTrisArray.Dispose();
 
-        entities.Dispose();
         mazeVertices.Dispose();
         mazeTriangles.Dispose();
     }
@@ -289,3 +249,40 @@ public class MazeGeneratorSystem : SystemBase
 
 
 
+// TODO check if any of this is still useful
+
+//    for (int i = 0; i < entities.Length; i++)
+//    {
+
+//        Vector3[] originalVertices = maze.mesh.vertices;
+//        int[] originalTriangles = maze.mesh.triangles;
+
+//        Vector3[] verticesToWrite = new Vector3[vertices.Length + originalVertices.Length];
+//        int[] trianglesToWrite = new int[triangles.Length + originalTriangles.Length];
+
+//        for (int j = 0; j < vertices.Length + originalVertices.Length; j++)
+//        {
+//            if (j < originalVertices.Length)
+//            {
+//                verticesToWrite[j] = originalVertices[j];
+//            }
+//            else
+//            {
+//                verticesToWrite[j] = vertices[j - originalVertices.Length].Value;
+//            }
+//        }
+
+//        for (int j = 0; j < triangles.Length + originalTriangles.Length; j++)
+//        {
+//            if (j < originalTriangles.Length)
+//            {
+//                trianglesToWrite[j] = originalTriangles[j];
+//            }
+//            else
+//            {
+//                trianglesToWrite[j] = triangles[j - originalTriangles.Length].Value + originalVertices.Length;
+//            }
+//        }
+
+
+//    }
