@@ -7,6 +7,9 @@ using Unity.Rendering;
 using Unity.Jobs;
 using Unity.Mathematics;
 using System.Collections.Generic;
+using System.IO.Pipes;
+using UnityEngine.UIElements;
+using System.Linq;
 
 public class MazeGeneratorSystem : SystemBase
 {
@@ -16,9 +19,15 @@ public class MazeGeneratorSystem : SystemBase
     // Stitch the meshes together into the native arrays
     // Update the maze's mesh with this one stitched mesh (mesh update is expensive)
 
+    public struct MeshData {
+        public float3[] vertices { get; set; }
+        public int[] triangles { get; set; }
+    }
+
+
+
     protected override void OnCreate()
     {
-        
     }
 
     //Update mesh code
@@ -35,54 +44,163 @@ public class MazeGeneratorSystem : SystemBase
         maze.mesh.RecalculateNormals();
     }
 
-    protected override void OnUpdate()
-    {
-        float torusRadius = 10f;
-        float pipeRadius = 5f;
-        int pipeSegments = 10;
+    
 
+    public static MeshData GetMeshDataByCase(int mazeCase, int pipeSegments, float pipeRadius, float torusRadius) //todo change to enum 0 = invalid, 1 = one connection, 2 = two connections, 3 = three connections, 4 = four connections
+    {
         Vector3 GetPoint(float u, float v)
         {
 
             Vector3 point;
 
             point.x = (torusRadius + pipeRadius * Mathf.Cos(v)) * Mathf.Cos(u);
-            point.y = (torusRadius + pipeRadius * Mathf.Cos(v)) * Mathf.Sin(u);
-            point.z = pipeRadius * Mathf.Sin(v);
-                
+            point.y = pipeRadius * Mathf.Sin(v);
+            point.z = (torusRadius + pipeRadius * Mathf.Cos(v)) * Mathf.Sin(u);
+
             return point;
         }
+        List<float3> Vertices = new List<float3>();
+        List<int> Triangles = new List<int>();
+
+        switch (mazeCase)
+        {
+            case 0: //invalid
+                break;
+            case 1: // dead end case
+                break;
+            case 2: // straight pipe case
+                //populate vertices list
+                if (Vertices.Count < 2 * (pipeSegments - 1))
+                {
+                    for (int j = 0; j < 2 * (pipeSegments - 1); j++)
+                    {
+                        if (Vertices.Count < 2 * (pipeSegments - 1))
+                        {
+                            Vertices.Add(new float3(0f, 0f, 1f));
+                        }
+                    }
+                }
+
+                // create vertices list
+                float v = 0;
+                for (int i = 0; i < (pipeSegments - 1); i++)
+                {
+                    Vector3 point1 = GetPoint(0, v);
+                    Vector3 point2 = GetPoint(0, v) + (torusRadius) * new Vector3(0f, 0f, 2f);
+
+                    v += (2f * Mathf.PI) / (pipeSegments - 1);
+
+                    //vertex = Vertices[2 * i];
+                    //vertex.Value = point1;
+                    Vertices[2 * i] = point1;
+
+                    //vertex = Vertices[2 * i + 1];
+                    //vertex.Value = point2;
+                    Vertices[2 * i + 1] = point2;
+                }
+
+                //populate triangles list
+
+                int maxVertex = (2 * (pipeSegments - 1)) - 1;
+
+                if (Triangles.Count < (maxVertex + 1) * 3)
+                {
+                    for (int j = 0; j < (maxVertex + 1) * 3; j++)
+                    {
+                        if (Triangles.Count < (maxVertex + 1) * 3)
+                        {
+                            Triangles.Add(0);
+                        }
+                    }
+                }
+
+                //create triangles list
+                for (int i = 0; i < maxVertex + 1; i++)
+                {
+                    if (i % 2 == 1)
+                    {
+                        //triangle = Triangles[3 * i];
+                        //triangle.Value = (i + 2) % (maxVertex + 1);
+                        Triangles[3 * i] = (i + 2) % (maxVertex + 1);
+
+                        //triangle = Triangles[3 * i + 1];
+                        //triangle.Value = (i + 1) % (maxVertex + 1);
+                        Triangles[3 * i + 1] = (i + 1) % (maxVertex + 1);
+
+                        //triangle = Triangles[3 * i + 2];
+                        //triangle.Value = i;
+                        Triangles[3 * i + 2] = i;
+
+                    }
+                    else
+                    {
+                        //triangle = Triangles[3 * i];
+                        //triangle.Value = i;
+                        Triangles[3 * i] = i;
+
+                        //triangle = Triangles[3 * i + 1];
+                        //triangle.Value = (i + 1) % (maxVertex + 1);
+                        Triangles[3 * i + 1] = (i + 1) % (maxVertex + 1);
+
+                        //triangle = Triangles[3 * i + 2];
+                        //triangle.Value = (i + 2) % (maxVertex + 1);
+                        Triangles[3 * i + 2] = (i + 2) % (maxVertex + 1);
+                    }
+                }
+
+                // create 
+                break;
+            case 3: // T-Junction case
+                break;
+            case 4: // crossroads case
+                break;
+            default: //invalid
+                break;
+        }
+
+        return new MeshData() { vertices = Vertices.ToArray(),  triangles = Triangles.ToArray() };
+    }
+
+    protected override void OnUpdate()
+    {
+        
+
 
         float deltaTime = Time.DeltaTime;
 
         bool mazeNeedsUpdate = Input.GetKeyDown(KeyCode.Space);
 
+        //size of array is maximum possible size of maze (256 tubes)
         NativeArray<int> numberOfVertsArray = new NativeArray<int>(256, Allocator.TempJob);
         NativeArray<int> numberOfTrisArray = new NativeArray<int>(256, Allocator.TempJob);
 
-        NativeArray<int> randSeed = new NativeArray<int>(1, Allocator.TempJob);
-        randSeed[0] = UnityEngine.Random.Range(0,177); //arbitrary random seed
+        //NativeArray<int> randSeed = new NativeArray<int>(1, Allocator.TempJob);
+        //randSeed[0] = UnityEngine.Random.Range(0,177); //arbitrary random seed
 
         
         int[,] mazeArray2d = new int[,]
         {
-            {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-            {0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0},
-            {0,1,0,0,0,0,1,0,0,1,0,0,0,0,1,0},
-            {0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0},
-            {0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0},
-            {0,1,0,0,0,0,1,0,0,1,0,0,0,0,1,0},
-            {0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0},
-            {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-            {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-            {0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0},
-            {0,1,0,0,0,0,1,0,0,1,0,0,0,0,1,0},
-            {0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0},
-            {0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0},
-            {0,1,0,0,0,0,1,0,0,1,0,0,0,0,1,0},
-            {0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0},
-            {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+            {0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,0},
+            {0,1,0,0,0,1,0,0,0,0,0,1,0,1,1,1},
+            {0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0},
+            {0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0},
+            {0,0,0,1,0,0,1,0,0,0,1,1,1,1,1,0},
+            {0,1,1,1,1,1,1,0,0,0,0,0,1,0,1,1},
+            {0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0},
+            {1,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1},
+            {0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0},
+            {1,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1},
+            {0,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1},
+            {0,0,0,1,0,1,0,1,1,1,1,1,1,1,0,1},
+            {0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,1},
+            {0,1,0,1,0,1,0,1,1,1,1,1,1,1,1,1},
+            {0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,0},
+            {0,1,1,1,1,1,1,1,1,1,0,1,0,1,1,1}
         };
+
+        // TODO we want to convert the array above into an array of Enums showing us which directions have pipes attached
+
+
 
         NativeArray<int> mazeArray = new NativeArray<int>(256, Allocator.TempJob);
 
@@ -101,8 +219,9 @@ public class MazeGeneratorSystem : SystemBase
         Entities.ForEach((Entity entity, int entityInQueryIndex, DynamicBuffer <IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices, 
             ref Translation translation, ref Seed seed) =>
         {
-            float v = 0;
-
+            float torusRadius = 10f;
+            float pipeRadius = 5f;
+            int pipeSegments = 10;
             //entities[entityInQueryIndex] = entity;
 
             if (mazeNeedsUpdate && (mazeArray[entityInQueryIndex] == 1))
@@ -119,99 +238,146 @@ public class MazeGeneratorSystem : SystemBase
 
                 translation.Value = newTranslation;
 
-                translation.Value *= 10; //new Vector3((new Unity.Mathematics.Random((uint)(entityInQueryIndex+ (randSeed[0]++)))).NextFloat(-100f, 100f), 0, (new Unity.Mathematics.Random((uint)(entityInQueryIndex + (randSeed[1]++)))).NextFloat(-100f, 100f));
+                translation.Value *= 20; //new Vector3((new Unity.Mathematics.Random((uint)(entityInQueryIndex+ (randSeed[0]++)))).NextFloat(-100f, 100f), 0, (new Unity.Mathematics.Random((uint)(entityInQueryIndex + (randSeed[1]++)))).NextFloat(-100f, 100f));
+
+                MeshData meshData = GetMeshDataByCase(2, pipeSegments, pipeRadius, torusRadius);
 
 
+                float3[] vertices = meshData.vertices;
+                int[] triangles = meshData.triangles;
 
 
-
-                // START OF PLACEHOLDER CODE
-
-                if (Vertices.Length < 2 * (pipeSegments - 1))
+                //populate vertex buffer with empty vertices
+                if (Vertices.Length < vertices.Length)
                 {
-                    //populate vertex buffer
-                    for (int j = 0; j < 2 * (pipeSegments - 1); j++)
+                    for (int j = 0; j < vertices.Length; j++)
                     {
-                        if (Vertices.Length < 2 * (pipeSegments - 1))
+                        if (Vertices.Length < vertices.Length)
                         {
-                            Vertices.Add(new Float3BufferElement { Value = new float3(0f, 1f, 0f) });
+                            Vertices.Add(new Float3BufferElement { Value = new float3(0f, 0f, 1f) });
                         }
                     }
                 }
-
-                //used to generate the array of vertices as required 
-                Float3BufferElement vertex;
-                for (int i = 0; i < (pipeSegments - 1); i++)
+                //fill in vertices
+                for (int i = 0; i < vertices.Length; i++)
                 {
-                    Vector3 point1 = (Vector3)translation.Value + GetPoint(0, v);
-                    Vector3 point2 = (Vector3)translation.Value + GetPoint(0, v) + torusRadius / 2 * new Vector3(0f, 1f, 0f);
-
-                    v += (2f * Mathf.PI) / (pipeSegments - 1);
-
-                    vertex = Vertices[2 * i];
-                    vertex.Value = point1;
-                    Vertices[2 * i] = vertex;
-
-                    vertex = Vertices[2 * i + 1];
-                    vertex.Value = point2;
-                    Vertices[2 * i + 1] = vertex;
-
-                    numberOfVertsArray[entityInQueryIndex] += 2;
+                    var vertex = Vertices[i];
+                    vertex.Value = vertices[i] + translation.Value;
+                    Vertices[i] = vertex;
+                    numberOfVertsArray[entityInQueryIndex]++;
                 }
 
-                //sets our mesh's vertex array to equal the array we have just created
-
-
-                int maxVertex = (2 * (pipeSegments - 1)) - 1;
-
-                //populate triangles buffer
-                if (Triangles.Length < (maxVertex + 1) * 3)
+                //populate triangles buffer with empty triangles
+                if (Triangles.Length < triangles.Length)
                 {
-                    for (int j = 0; j < (maxVertex + 1) * 3; j++)
+                    for (int j = 0; j < triangles.Length; j++)
                     {
-                        if (Triangles.Length < (maxVertex + 1 ) * 3)
+                        if (Triangles.Length < triangles.Length)
                         {
                             Triangles.Add(new IntBufferElement { Value = 0 });
                         }
                     }
                 }
-
-                //used to generate the array of triangles as required 
-                IntBufferElement triangle;
-                for (int i = 0; i < maxVertex + 1; i++)
+                //fill in triangles
+                for (int i = 0; i < triangles.Length; i++)
                 {
-                    if (i % 2 == 1)
-                    {
-                        triangle = Triangles[3 * i];
-                        triangle.Value = (i + 2) % (maxVertex + 1);
-                        Triangles[3 * i] = triangle;
-
-                        triangle = Triangles[3 * i + 1];
-                        triangle.Value = (i + 1) % (maxVertex + 1);
-                        Triangles[3 * i + 1] = triangle;
-
-                        triangle = Triangles[3 * i + 2];
-                        triangle.Value = i;
-                        Triangles[3 * i + 2] = triangle;
-
-                    }
-                    else
-                    {
-                        triangle = Triangles[3 * i];
-                        triangle.Value = i;
-                        Triangles[3 * i] = triangle;
-
-                        triangle = Triangles[3 * i + 1];
-                        triangle.Value = (i + 1) % (maxVertex + 1);
-                        Triangles[3 * i + 1] = triangle;
-
-                        triangle = Triangles[3 * i + 2];
-                        triangle.Value = (i + 2) % (maxVertex + 1);
-                        Triangles[3 * i + 2] = triangle;
-                    }
-
-                    numberOfTrisArray[entityInQueryIndex] += 3;
+                    var triangle = Triangles[i];
+                    triangle.Value = triangles[i];
+                    Triangles[i] = triangle;
                 }
+
+                //export the number of verts/tris to outside the job
+                numberOfVertsArray[entityInQueryIndex] = vertices.Length;
+                numberOfTrisArray[entityInQueryIndex] = triangles.Length;
+
+
+
+                // START OF PLACEHOLDER CODE
+
+                //if (Vertices.Length < 2 * (pipeSegments - 1))
+                //{
+                //    //populate vertex buffer
+                //    for (int j = 0; j < 2 * (pipeSegments - 1); j++)
+                //    {
+                //        if (Vertices.Length < 2 * (pipeSegments - 1))
+                //        {
+                //            Vertices.Add(new Float3BufferElement { Value = new float3(0f, 0f, 1f) });
+                //        }
+                //    }
+                //}
+
+                //float v = 0;
+                ////used to generate the array of vertices as required 
+                //Float3BufferElement vertex;
+                //for (int i = 0; i < (pipeSegments - 1); i++)
+                //{
+                //    Vector3 point1 = (Vector3)translation.Value + GetPoint(0, v);
+                //    Vector3 point2 = (Vector3)translation.Value + GetPoint(0, v) + torusRadius / 2 * new Vector3(0f, 0f, 2f);
+
+                //    v += (2f * Mathf.PI) / (pipeSegments - 1);
+
+                //    vertex = Vertices[2 * i];
+                //    vertex.Value = point1;
+                //    Vertices[2 * i] = vertex;
+
+                //    vertex = Vertices[2 * i + 1];
+                //    vertex.Value = point2;
+                //    Vertices[2 * i + 1] = vertex;
+
+                //    numberOfVertsArray[entityInQueryIndex] += 2;
+                //}
+
+
+                //int maxVertex = (2 * (pipeSegments - 1)) - 1;
+
+                ////populate triangles buffer
+                //if (Triangles.Length < (maxVertex + 1) * 3)
+                //{
+                //    for (int j = 0; j < (maxVertex + 1) * 3; j++)
+                //    {
+                //        if (Triangles.Length < (maxVertex + 1) * 3)
+                //        {
+                //            Triangles.Add(new IntBufferElement { Value = 0 });
+                //        }
+                //    }
+                //}
+
+                ////used to generate the array of triangles as required 
+                //IntBufferElement triangle;
+                //for (int i = 0; i < maxVertex + 1; i++)
+                //{
+                //    if (i % 2 == 1)
+                //    {
+                //        triangle = Triangles[3 * i];
+                //        triangle.Value = (i + 2) % (maxVertex + 1);
+                //        Triangles[3 * i] = triangle;
+
+                //        triangle = Triangles[3 * i + 1];
+                //        triangle.Value = (i + 1) % (maxVertex + 1);
+                //        Triangles[3 * i + 1] = triangle;
+
+                //        triangle = Triangles[3 * i + 2];
+                //        triangle.Value = i;
+                //        Triangles[3 * i + 2] = triangle;
+
+                //    }
+                //    else
+                //    {
+                //        triangle = Triangles[3 * i];
+                //        triangle.Value = i;
+                //        Triangles[3 * i] = triangle;
+
+                //        triangle = Triangles[3 * i + 1];
+                //        triangle.Value = (i + 1) % (maxVertex + 1);
+                //        Triangles[3 * i + 1] = triangle;
+
+                //        triangle = Triangles[3 * i + 2];
+                //        triangle.Value = (i + 2) % (maxVertex + 1);
+                //        Triangles[3 * i + 2] = triangle;
+                //    }
+
+                //    numberOfTrisArray[entityInQueryIndex] += 3;
+                //}
 
 
                 // END OF PLACEHOLDER CODE
@@ -222,7 +388,7 @@ public class MazeGeneratorSystem : SystemBase
         CompleteDependency();
 
         mazeArray.Dispose();
-        randSeed.Dispose();
+        //randSeed.Dispose();
 
         int numVerts = 0;
         int numTris = 0;
