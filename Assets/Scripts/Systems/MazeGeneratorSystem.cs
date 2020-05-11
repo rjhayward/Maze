@@ -16,7 +16,10 @@ public class MazeGeneratorSystem : SystemBase
     // Stitch the meshes together into the native arrays
     // Update the maze's mesh with this one stitched mesh (mesh update is expensive)
 
-
+    protected override void OnCreate()
+    {
+        
+    }
 
     //Update mesh code
     void UpdateMesh(Vector3[] mazeVertices, int[] mazeTriangles)
@@ -46,7 +49,7 @@ public class MazeGeneratorSystem : SystemBase
             point.x = (torusRadius + pipeRadius * Mathf.Cos(v)) * Mathf.Cos(u);
             point.y = (torusRadius + pipeRadius * Mathf.Cos(v)) * Mathf.Sin(u);
             point.z = pipeRadius * Mathf.Sin(v);
-
+                
             return point;
         }
 
@@ -54,27 +57,75 @@ public class MazeGeneratorSystem : SystemBase
 
         bool mazeNeedsUpdate = Input.GetKeyDown(KeyCode.Space);
 
-        NativeArray<int> numberOfVertsArray = new NativeArray<int>(1000, Allocator.TempJob);
-        NativeArray<int> numberOfTrisArray = new NativeArray<int>(1000, Allocator.TempJob);
+        NativeArray<int> numberOfVertsArray = new NativeArray<int>(256, Allocator.TempJob);
+        NativeArray<int> numberOfTrisArray = new NativeArray<int>(256, Allocator.TempJob);
 
         NativeArray<int> randSeed = new NativeArray<int>(1, Allocator.TempJob);
         randSeed[0] = UnityEngine.Random.Range(0,177); //arbitrary random seed
 
+        
+        int[,] mazeArray2d = new int[,]
+        {
+            {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            {0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0},
+            {0,1,0,0,0,0,1,0,0,1,0,0,0,0,1,0},
+            {0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0},
+            {0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0},
+            {0,1,0,0,0,0,1,0,0,1,0,0,0,0,1,0},
+            {0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0},
+            {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+            {0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0},
+            {0,1,0,0,0,0,1,0,0,1,0,0,0,0,1,0},
+            {0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0},
+            {0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0},
+            {0,1,0,0,0,0,1,0,0,1,0,0,0,0,1,0},
+            {0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0},
+            {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+        };
+
+        NativeArray<int> mazeArray = new NativeArray<int>(256, Allocator.TempJob);
+
+        //convert 2D array into 1D array
+        int index = 0;
+        for (int y = 0; y < 16; y++)
+        {
+            for (int x = 0; x < 16; x++)
+            {
+                mazeArray[index] = mazeArray2d[x, y];
+                index++;
+            }
+        }
+
         // assigns mesh data to each entity (currently just a placeholder mesh)
-        Entities.ForEach((Entity entity, int entityInQueryIndex, DynamicBuffer < IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices, 
+        Entities.ForEach((Entity entity, int entityInQueryIndex, DynamicBuffer <IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices, 
             ref Translation translation, ref Seed seed) =>
         {
             float v = 0;
 
             //entities[entityInQueryIndex] = entity;
 
-
-            if (mazeNeedsUpdate)
+            if (mazeNeedsUpdate && (mazeArray[entityInQueryIndex] == 1))
             {
-                var random = new Unity.Mathematics.Random((uint)(entity.Index + entityInQueryIndex + randSeed[0] + 1) * 0x9F6ABC1);
-                var randomVector = math.normalizesafe(random.NextFloat3() - new float3(0.5f, 0.5f, 0.5f));
-                randomVector.y = 0;
-                translation.Value = randomVector * 100; //new Vector3((new Unity.Mathematics.Random((uint)(entityInQueryIndex+ (randSeed[0]++)))).NextFloat(-100f, 100f), 0, (new Unity.Mathematics.Random((uint)(entityInQueryIndex + (randSeed[1]++)))).NextFloat(-100f, 100f));
+                //var random = new Unity.Mathematics.Random((uint)(entity.Index + entityInQueryIndex + randSeed[0] + 1) * 0x9F6ABC1);
+                //var randomVector = math.normalizesafe(random.NextFloat3() - new float3(0.5f, 0.5f, 0.5f));
+                //randomVector.y = 0;
+
+                float3 newTranslation = new float3(0f,0f,0f);
+
+                newTranslation.x = entityInQueryIndex % 16;
+                newTranslation.y = 0f;
+                newTranslation.z = entityInQueryIndex / 16;
+
+                translation.Value = newTranslation;
+
+                translation.Value *= 10; //new Vector3((new Unity.Mathematics.Random((uint)(entityInQueryIndex+ (randSeed[0]++)))).NextFloat(-100f, 100f), 0, (new Unity.Mathematics.Random((uint)(entityInQueryIndex + (randSeed[1]++)))).NextFloat(-100f, 100f));
+
+
+
+
+
+                // START OF PLACEHOLDER CODE
 
                 if (Vertices.Length < 2 * (pipeSegments - 1))
                 {
@@ -161,10 +212,16 @@ public class MazeGeneratorSystem : SystemBase
 
                     numberOfTrisArray[entityInQueryIndex] += 3;
                 }
+
+
+                // END OF PLACEHOLDER CODE
+
+
             }
         }).ScheduleParallel();
         CompleteDependency();
 
+        mazeArray.Dispose();
         randSeed.Dispose();
 
         int numVerts = 0;
@@ -174,15 +231,18 @@ public class MazeGeneratorSystem : SystemBase
         {
             numVerts += numberOfVertsArray[i];
         }
+
         for (int i = 0; i < numberOfTrisArray.Length; i++)
         {
             numTris += numberOfTrisArray[i];
         }
 
+
+
+
+
         NativeArray<Vector3> mazeVertices = new NativeArray<Vector3>(numVerts, Allocator.TempJob);
-
         NativeArray<int> mazeTriangles = new NativeArray<int>(numTris, Allocator.TempJob);
-
 
         // Stitch together meshes
         Entities.ForEach((int entityInQueryIndex, DynamicBuffer<IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices) =>

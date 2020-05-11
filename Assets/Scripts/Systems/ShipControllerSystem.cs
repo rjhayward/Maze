@@ -11,8 +11,6 @@ using Unity.Mathematics;
 
 public class ShipControllerSystem : SystemBase
 {
-    
-
     protected override void OnUpdate()
     {
         float deltaTime = Time.DeltaTime;
@@ -28,62 +26,58 @@ public class ShipControllerSystem : SystemBase
         {
             if (isDownPressed)
             {
-                rotation.Value *= Quaternion.Euler(new Vector3(0.3f,0f,0f));
+                rotation.Value *= Quaternion.Euler(new Vector3(-0.3f, 0f, 0f));
             }
             if (isUpPressed)
             {
-                rotation.Value *= Quaternion.Euler(new Vector3(-0.3f, 0f, 0f));
+                rotation.Value *= Quaternion.Euler(new Vector3(0.3f, 0f, 0f));
             }
             if (isLeftPressed)
             {
-                rotation.Value *= Quaternion.Euler(new Vector3(0f, 0f, 0.3f));
+                rotation.Value *= Quaternion.Euler(new Vector3(0f, 0f, 0.5f));
             }
             if (isRightPressed)
             {
-                rotation.Value *= Quaternion.Euler(new Vector3(0f, 0f, -0.3f));
+                rotation.Value *= Quaternion.Euler(new Vector3(0f, 0f, -0.5f));
             }
         }).ScheduleParallel();
 
         CompleteDependency();
 
-        NativeArray<Vector3> shipPositionDirection = new NativeArray<Vector3>(2, Allocator.TempJob);
-        NativeArray<Quaternion> shipRotation = new NativeArray<Quaternion>(1, Allocator.TempJob);
+        NativeArray<Vector3> shipDirection = new NativeArray<Vector3>(1, Allocator.TempJob);
         NativeArray<Translation> shipTranslation = new NativeArray<Translation>(1, Allocator.TempJob);
+        NativeArray<Quaternion> shipRotation = new NativeArray<Quaternion>(1, Allocator.TempJob);
+
         // get position of all ships (we are only using one but it can be used for many if required in the future)
         Entities.ForEach((int entityInQueryIndex, ref LocalToWorld localToWorld, in IsShip isShip, in Translation translation) =>
         {
             shipTranslation[0 + entityInQueryIndex] = translation;
-            shipPositionDirection[1 + entityInQueryIndex] = localToWorld.Up;
+            shipDirection[0 + entityInQueryIndex] = localToWorld.Forward;
             shipRotation[0 + entityInQueryIndex] = localToWorld.Rotation;
 
         }).ScheduleParallel();
 
         CompleteDependency();
 
+        Vector3 shipPos = shipTranslation[0].Value;
 
+        Vector3 shipDir = shipDirection[0];
+
+        Quaternion shipRot = shipRotation[0];
 
         // TODO figure out correct way of doing this
         Camera camera = GameObject.Find("Main Camera").GetComponent<Camera>();
 
-        // get first ship's position and apply the camera's position to be behind it
-        Vector3 cameraPosition = shipTranslation[0].Value;
-        cameraPosition.x -= 3f;
-        cameraPosition.y -= 10f;
-        camera.transform.position = cameraPosition;
-
-        //// get first ship's rotation and apply same rotation to camera
-        //shipRotation[0].ToAngleAxis(out float angle, out Vector3 axis);
-        //camera.transform.RotateAround(shipPositionDirection[0], axis, angle);
-        //camera.transform.LookAt(shipPositionDirection[0]);
-        //camera.transform.forward = shipPositionDirection[1];
-
-        float3 lookVector = shipTranslation[0].Value - (float3) camera.transform.position;  
-        Quaternion rot = Quaternion.LookRotation(lookVector);
-        camera.transform.rotation = rot;
-
+        // set the camera to a position behind the ship parallel to the ship's forward vector 
+        Vector3 cameraPos = shipPos + (-10) * shipDir;
+        camera.transform.position = cameraPos;
+        //camera.transform.forward = shipDir;
+        
+        //set the camera's rotation to the same as the ship
+        camera.transform.rotation = shipRot;
 
         shipTranslation.Dispose();
-        shipPositionDirection.Dispose();
+        shipDirection.Dispose();
         shipRotation.Dispose();
     }
 }

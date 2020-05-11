@@ -76,7 +76,9 @@ public class GameManager : MonoBehaviour
             typeof(Seed)
         );
 
-        NativeArray<Entity> mazeEntities = new NativeArray<Entity>(1000, Allocator.Persistent);
+
+        // max amount of mazeEntities (16*16 = 256)
+        NativeArray<Entity> mazeEntities = new NativeArray<Entity>(256, Allocator.Temp);
 
         entityManager.CreateEntity(mazeArchetype, mazeEntities);
 
@@ -90,7 +92,6 @@ public class GameManager : MonoBehaviour
             entityManager.AddBuffer<IntBufferElement>(mazeEntities[i]);
 
             entityManager.AddBuffer<Float3BufferElement>(mazeEntities[i]);
-
         }
 
         mazeEntities.Dispose();

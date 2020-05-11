@@ -152,7 +152,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8552ab5e2bff1284099b951374323b0a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  shipMesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
+  shipMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   shipMaterial: {fileID: 15303, guid: 0000000000000000f000000000000000, type: 0}
 --- !u!4 &916521592
 Transform:
