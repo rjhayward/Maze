@@ -67,6 +67,7 @@ public class GameManager : MonoBehaviour
 
 
 
+
         // TODO split these into separate functions
 
         EntityArchetype mazeArchetype = entityManager.CreateArchetype(

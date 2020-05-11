@@ -19,7 +19,7 @@ public class SimpleMovementSystem : SystemBase
         Entities.WithNone<IsAlive>() //exclude IsAlive
             .ForEach((ref LocalToWorld localToWorld, ref Translation translation) =>
         {
-            translation.Value += localToWorld.Forward * 2 * deltaTime;
+            translation.Value += localToWorld.Forward * 10 * deltaTime;
         }).ScheduleParallel();
 
     }

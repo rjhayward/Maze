@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.IO.Pipes;
 using UnityEngine.UIElements;
 using System.Linq;
+using System;
 
 public class MazeGeneratorSystem : SystemBase
 {
@@ -19,11 +20,22 @@ public class MazeGeneratorSystem : SystemBase
     // Stitch the meshes together into the native arrays
     // Update the maze's mesh with this one stitched mesh (mesh update is expensive)
 
-    public struct MeshData {
+    public struct MeshData
+    {
         public float3[] vertices { get; set; }
         public int[] triangles { get; set; }
     }
 
+    [System.Flags]
+    public enum PipeCase // enum representing flags for all possibilities of pipe connections
+    {
+        Empty = 0,
+        Exists = 1,
+        Up = 2,
+        Right = 4,
+        Down = 8,
+        Left = 16
+    }
 
 
     protected override void OnCreate()
@@ -44,9 +56,43 @@ public class MazeGeneratorSystem : SystemBase
         maze.mesh.RecalculateNormals();
     }
 
-    
+    public static PipeCase[,] GetCaseArray(int[,] mazeArray)
+    {
+        PipeCase[,] pipeCaseArray = new PipeCase[16, 16]; // TODO un-hardcode this stuff lol
 
-    public static MeshData GetMeshDataByCase(int mazeCase, int pipeSegments, float pipeRadius, float torusRadius) //todo change to enum 0 = invalid, 1 = one connection, 2 = two connections, 3 = three connections, 4 = four connections
+        for (int x = 0; x < 16;x++)
+        {
+            for (int y = 0; y < 16; y++)
+            {
+                if (mazeArray[x, y] == 0)
+                {
+                    pipeCaseArray[x, y] = PipeCase.Empty;
+                    continue;
+                }
+                pipeCaseArray[x, y] = PipeCase.Exists;
+
+                if (x - 1 >= 0)
+                    if (mazeArray[x - 1, y] == 1)
+                        pipeCaseArray[x, y] |= PipeCase.Down;
+
+                if (x + 1 < 16)
+                    if (mazeArray[x + 1, y] == 1)
+                        pipeCaseArray[x, y] |= PipeCase.Up;
+
+                if (y - 1 >= 0)
+                    if (mazeArray[x, y - 1] == 1)
+                        pipeCaseArray[x, y] |= PipeCase.Right;
+
+                if (y + 1 < 16)
+                    if (mazeArray[x, y + 1] == 1)
+                        pipeCaseArray[x, y] |= PipeCase.Left;
+            }
+        }
+
+        return pipeCaseArray;
+    }
+
+    public static MeshData GetMeshDataByCase(int mazeCase, int pipeSegments, float pipeRadius, float torusRadius, int rotation) //todo change to enum 0 = invalid, 1 = one connection, 2 = two connections, 3 = three connections, 4 = four connections
     {
         Vector3 GetPoint(float u, float v)
         {
@@ -158,12 +204,23 @@ public class MazeGeneratorSystem : SystemBase
                 break;
         }
 
-        return new MeshData() { vertices = Vertices.ToArray(),  triangles = Triangles.ToArray() };
+        //rotate all vertices around pivot (centre)
+        Quaternion rotationQuaternion = new Quaternion();
+        rotationQuaternion.eulerAngles = new Vector3(0, rotation, 0);
+
+        Vector3 centre = (torusRadius) * new Vector3(0f, 0f, 1f);
+
+        for (int i = 0; i < Vertices.Count; i++)
+        {
+            Vertices[i] = rotationQuaternion * ((Vector3)Vertices[i] - centre) + centre;
+        }
+
+        return new MeshData() { vertices = Vertices.ToArray(), triangles = Triangles.ToArray() };
     }
 
     protected override void OnUpdate()
     {
-        
+
 
 
         float deltaTime = Time.DeltaTime;
@@ -177,7 +234,7 @@ public class MazeGeneratorSystem : SystemBase
         //NativeArray<int> randSeed = new NativeArray<int>(1, Allocator.TempJob);
         //randSeed[0] = UnityEngine.Random.Range(0,177); //arbitrary random seed
 
-        
+
         int[,] mazeArray2d = new int[,]
         {
             {0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,0},
@@ -200,9 +257,9 @@ public class MazeGeneratorSystem : SystemBase
 
         // TODO we want to convert the array above into an array of Enums showing us which directions have pipes attached
 
+        PipeCase[,] caseArray2d = GetCaseArray(mazeArray2d);
 
-
-        NativeArray<int> mazeArray = new NativeArray<int>(256, Allocator.TempJob);
+        NativeArray<PipeCase> caseArray = new NativeArray<PipeCase>(256, Allocator.TempJob);
 
         //convert 2D array into 1D array
         int index = 0;
@@ -210,13 +267,13 @@ public class MazeGeneratorSystem : SystemBase
         {
             for (int x = 0; x < 16; x++)
             {
-                mazeArray[index] = mazeArray2d[x, y];
+                caseArray[index] = caseArray2d[x, y];
                 index++;
             }
         }
 
         // assigns mesh data to each entity (currently just a placeholder mesh)
-        Entities.ForEach((Entity entity, int entityInQueryIndex, DynamicBuffer <IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices, 
+        Entities.ForEach((Entity entity, int entityInQueryIndex, DynamicBuffer<IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices,
             ref Translation translation, ref Seed seed) =>
         {
             float torusRadius = 10f;
@@ -224,13 +281,13 @@ public class MazeGeneratorSystem : SystemBase
             int pipeSegments = 10;
             //entities[entityInQueryIndex] = entity;
 
-            if (mazeNeedsUpdate && (mazeArray[entityInQueryIndex] == 1))
+            if (mazeNeedsUpdate && caseArray[entityInQueryIndex].HasFlag(PipeCase.Exists))
             {
                 //var random = new Unity.Mathematics.Random((uint)(entity.Index + entityInQueryIndex + randSeed[0] + 1) * 0x9F6ABC1);
                 //var randomVector = math.normalizesafe(random.NextFloat3() - new float3(0.5f, 0.5f, 0.5f));
                 //randomVector.y = 0;
 
-                float3 newTranslation = new float3(0f,0f,0f);
+                float3 newTranslation = new float3(0f, 0f, 0f);
 
                 newTranslation.x = entityInQueryIndex % 16;
                 newTranslation.y = 0f;
@@ -240,57 +297,75 @@ public class MazeGeneratorSystem : SystemBase
 
                 translation.Value *= 20; //new Vector3((new Unity.Mathematics.Random((uint)(entityInQueryIndex+ (randSeed[0]++)))).NextFloat(-100f, 100f), 0, (new Unity.Mathematics.Random((uint)(entityInQueryIndex + (randSeed[1]++)))).NextFloat(-100f, 100f));
 
-                MeshData meshData = GetMeshDataByCase(2, pipeSegments, pipeRadius, torusRadius);
+                MeshData meshData = new MeshData();
 
-
-                float3[] vertices = meshData.vertices;
-                int[] triangles = meshData.triangles;
-
-
-                //populate vertex buffer with empty vertices
-                if (Vertices.Length < vertices.Length)
+                // TODO choose case based on array of cases
+                
+                if (caseArray[entityInQueryIndex] == (PipeCase.Exists | PipeCase.Up | PipeCase.Down))
                 {
-                    for (int j = 0; j < vertices.Length; j++)
+                    meshData = GetMeshDataByCase(2, pipeSegments, pipeRadius, torusRadius, 90);
+                }
+                else if (caseArray[entityInQueryIndex] == (PipeCase.Exists | PipeCase.Left | PipeCase.Right))
+                {
+                    meshData = GetMeshDataByCase(2, pipeSegments, pipeRadius, torusRadius, 0);
+                }
+                    //else if (caseArray[entityInQueryIndex].HasFlag(PipeCase.Exists)) //== (PipeCase.Exists | PipeCase.Down| PipeCase.Up) )
+                    //{
+                    //    meshData = GetMeshDataByCase(2, pipeSegments, pipeRadius, torusRadius, 45);
+                    //}
+
+                if (meshData.vertices != null)
+                {
+
+                    float3[] vertices = meshData.vertices;
+                    int[] triangles = meshData.triangles;
+
+
+                    //populate vertex buffer with empty vertices
+                    if (Vertices.Length < vertices.Length)
                     {
-                        if (Vertices.Length < vertices.Length)
+                        for (int j = 0; j < vertices.Length; j++)
                         {
-                            Vertices.Add(new Float3BufferElement { Value = new float3(0f, 0f, 1f) });
+                            if (Vertices.Length < vertices.Length)
+                            {
+                                Vertices.Add(new Float3BufferElement { Value = new float3(0f, 0f, 1f) });
+                            }
                         }
                     }
-                }
-                //fill in vertices
-                for (int i = 0; i < vertices.Length; i++)
-                {
-                    var vertex = Vertices[i];
-                    vertex.Value = vertices[i] + translation.Value;
-                    Vertices[i] = vertex;
-                    numberOfVertsArray[entityInQueryIndex]++;
-                }
-
-                //populate triangles buffer with empty triangles
-                if (Triangles.Length < triangles.Length)
-                {
-                    for (int j = 0; j < triangles.Length; j++)
+                    //fill in vertices
+                    for (int i = 0; i < vertices.Length; i++)
                     {
-                        if (Triangles.Length < triangles.Length)
+                        var vertex = Vertices[i];
+                        vertex.Value = vertices[i] + translation.Value;
+                        Vertices[i] = vertex;
+                        numberOfVertsArray[entityInQueryIndex]++;
+                    }
+
+                    //populate triangles buffer with empty triangles
+                    if (Triangles.Length < triangles.Length)
+                    {
+                        for (int j = 0; j < triangles.Length; j++)
                         {
-                            Triangles.Add(new IntBufferElement { Value = 0 });
+                            if (Triangles.Length < triangles.Length)
+                            {
+                                Triangles.Add(new IntBufferElement { Value = 0 });
+                            }
                         }
                     }
+                    //fill in triangles
+                    for (int i = 0; i < triangles.Length; i++)
+                    {
+                        var triangle = Triangles[i];
+                        triangle.Value = triangles[i];
+                        Triangles[i] = triangle;
+                    }
+
+                    //export the number of verts/tris to outside the job
+                    numberOfVertsArray[entityInQueryIndex] = vertices.Length;
+                    numberOfTrisArray[entityInQueryIndex] = triangles.Length;
+
+
                 }
-                //fill in triangles
-                for (int i = 0; i < triangles.Length; i++)
-                {
-                    var triangle = Triangles[i];
-                    triangle.Value = triangles[i];
-                    Triangles[i] = triangle;
-                }
-
-                //export the number of verts/tris to outside the job
-                numberOfVertsArray[entityInQueryIndex] = vertices.Length;
-                numberOfTrisArray[entityInQueryIndex] = triangles.Length;
-
-
 
                 // START OF PLACEHOLDER CODE
 
@@ -387,7 +462,7 @@ public class MazeGeneratorSystem : SystemBase
         }).ScheduleParallel();
         CompleteDependency();
 
-        mazeArray.Dispose();
+        caseArray.Dispose();
         //randSeed.Dispose();
 
         int numVerts = 0;
