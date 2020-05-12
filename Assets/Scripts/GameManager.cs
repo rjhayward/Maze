@@ -87,7 +87,7 @@ public class GameManager : MonoBehaviour
         {
             entityManager.SetComponentData(mazeEntities[i], new Translation
             {
-                Value = new Vector3(UnityEngine.Random.Range(-100f, 100f), 0, UnityEngine.Random.Range(-100f, 100f))
+                Value = new Vector3(0, 0, 0)
             });
 
             entityManager.AddBuffer<IntBufferElement>(mazeEntities[i]);

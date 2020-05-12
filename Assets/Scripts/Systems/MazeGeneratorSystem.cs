@@ -11,6 +11,7 @@ using System.IO.Pipes;
 using UnityEngine.UIElements;
 using System.Linq;
 using System;
+using System.Security;
 
 public class MazeGeneratorSystem : SystemBase
 {
@@ -26,8 +27,18 @@ public class MazeGeneratorSystem : SystemBase
         public int[] triangles { get; set; }
     }
 
+    public enum PipeCase
+    {
+        Invalid = 0,
+        DeadEnd = 1,
+        L = 2,
+        T = 3,
+        Cross = 4,
+        Straight = 5
+    }
+
     [System.Flags]
-    public enum PipeCase // enum representing flags for all possibilities of pipe connections
+    public enum PipeCaseFlags // enum representing flags for all possibilities of pipe connections
     {
         Empty = 0,
         Exists = 1,
@@ -37,11 +48,24 @@ public class MazeGeneratorSystem : SystemBase
         Left = 16
     }
 
-
+    public static readonly float torusRadius = 10f;
+    public static readonly float pipeRadius = 3f;
+    public static readonly int pipeSegments = 16;
+    public static readonly float squareSize = math.sqrt((2 * torusRadius * torusRadius));
     protected override void OnCreate()
     {
     }
+    static Vector3 GetPoint(float u, float v)
+    {
 
+        Vector3 point;
+
+        point.x = (torusRadius + pipeRadius * Mathf.Cos(v)) * Mathf.Cos(u);
+        point.y = pipeRadius * Mathf.Sin(v);
+        point.z = (torusRadius + pipeRadius * Mathf.Cos(v)) * Mathf.Sin(u);
+
+        return point;
+    }
     //Update mesh code
     void UpdateMesh(Vector3[] mazeVertices, int[] mazeTriangles)
     {
@@ -56,9 +80,9 @@ public class MazeGeneratorSystem : SystemBase
         maze.mesh.RecalculateNormals();
     }
 
-    public static PipeCase[,] GetCaseArray(int[,] mazeArray)
+    public static PipeCaseFlags[,] GetCaseArray(int[,] mazeArray)
     {
-        PipeCase[,] pipeCaseArray = new PipeCase[16, 16]; // TODO un-hardcode this stuff lol
+        PipeCaseFlags[,] pipeCaseArray = new PipeCaseFlags[16, 16]; // TODO un-hardcode this stuff lol
 
         for (int x = 0; x < 16;x++)
         {
@@ -66,139 +90,147 @@ public class MazeGeneratorSystem : SystemBase
             {
                 if (mazeArray[x, y] == 0)
                 {
-                    pipeCaseArray[x, y] = PipeCase.Empty;
+                    pipeCaseArray[x, y] = PipeCaseFlags.Empty;
                     continue;
                 }
-                pipeCaseArray[x, y] = PipeCase.Exists;
+                pipeCaseArray[x, y] = PipeCaseFlags.Exists;
 
                 if (x - 1 >= 0)
                     if (mazeArray[x - 1, y] == 1)
-                        pipeCaseArray[x, y] |= PipeCase.Down;
+                        pipeCaseArray[x, y] |= PipeCaseFlags.Down;
 
                 if (x + 1 < 16)
                     if (mazeArray[x + 1, y] == 1)
-                        pipeCaseArray[x, y] |= PipeCase.Up;
+                        pipeCaseArray[x, y] |= PipeCaseFlags.Up;
 
                 if (y - 1 >= 0)
                     if (mazeArray[x, y - 1] == 1)
-                        pipeCaseArray[x, y] |= PipeCase.Right;
+                        pipeCaseArray[x, y] |= PipeCaseFlags.Right;
 
                 if (y + 1 < 16)
                     if (mazeArray[x, y + 1] == 1)
-                        pipeCaseArray[x, y] |= PipeCase.Left;
+                        pipeCaseArray[x, y] |= PipeCaseFlags.Left;
             }
         }
 
         return pipeCaseArray;
     }
 
-    public static MeshData GetMeshDataByCase(int mazeCase, int pipeSegments, float pipeRadius, float torusRadius, int rotation) //todo change to enum 0 = invalid, 1 = one connection, 2 = two connections, 3 = three connections, 4 = four connections
+    public static MeshData GetStraightMeshData()
     {
-        Vector3 GetPoint(float u, float v)
-        {
-
-            Vector3 point;
-
-            point.x = (torusRadius + pipeRadius * Mathf.Cos(v)) * Mathf.Cos(u);
-            point.y = pipeRadius * Mathf.Sin(v);
-            point.z = (torusRadius + pipeRadius * Mathf.Cos(v)) * Mathf.Sin(u);
-
-            return point;
-        }
         List<float3> Vertices = new List<float3>();
         List<int> Triangles = new List<int>();
+        //populate vertices list
+        if (Vertices.Count < 2 * (pipeSegments - 1))
+        {
+            for (int j = 0; j < 2 * (pipeSegments - 1); j++)
+            {
+                if (Vertices.Count < 2 * (pipeSegments - 1))
+                {
+                    Vertices.Add(new float3(0f, 0f, 1f));
+                }
+            }
+        }
+
+        // create vertices list
+        float v = 0;
+        for (int i = 0; i < (pipeSegments - 1); i++)
+        {
+            Vector3 point1 = GetPoint(0, v);
+            Vector3 point2 = GetPoint(0, v) + squareSize * new Vector3(0f, 0f, 1f);
+
+            v += (2f * Mathf.PI) / (pipeSegments - 1);
+
+            //vertex = Vertices[2 * i];
+            //vertex.Value = point1;
+            Vertices[2 * i] = point1;
+
+            //vertex = Vertices[2 * i + 1];
+            //vertex.Value = point2;
+            Vertices[2 * i + 1] = point2;
+        }
+
+        for (int i = 0; i < Vertices.Count; i++)
+        {
+            Vertices[i] -= new float3(torusRadius, 0, 0);
+        }
+
+        //populate triangles list
+
+        int maxVertex = (2 * (pipeSegments - 1)) - 1;
+
+        if (Triangles.Count < (maxVertex + 1) * 3)
+        {
+            for (int j = 0; j < (maxVertex + 1) * 3; j++)
+            {
+                if (Triangles.Count < (maxVertex + 1) * 3)
+                {
+                    Triangles.Add(0);
+                }
+            }
+        }
+
+        //create triangles list
+        for (int i = 0; i < maxVertex + 1; i++)
+        {
+            if (i % 2 == 1)
+            {
+                //triangle = Triangles[3 * i];
+                //triangle.Value = (i + 2) % (maxVertex + 1);
+                Triangles[3 * i] = (i + 2) % (maxVertex + 1);
+
+                //triangle = Triangles[3 * i + 1];
+                //triangle.Value = (i + 1) % (maxVertex + 1);
+                Triangles[3 * i + 1] = (i + 1) % (maxVertex + 1);
+
+                //triangle = Triangles[3 * i + 2];
+                //triangle.Value = i;
+                Triangles[3 * i + 2] = i;
+
+            }
+            else
+            {
+                //triangle = Triangles[3 * i];
+                //triangle.Value = i;
+                Triangles[3 * i] = i;
+
+                //triangle = Triangles[3 * i + 1];
+                //triangle.Value = (i + 1) % (maxVertex + 1);
+                Triangles[3 * i + 1] = (i + 1) % (maxVertex + 1);
+
+                //triangle = Triangles[3 * i + 2];
+                //triangle.Value = (i + 2) % (maxVertex + 1);
+                Triangles[3 * i + 2] = (i + 2) % (maxVertex + 1);
+            }
+        }
+
+        return new MeshData() { vertices = Vertices.ToArray(), triangles = Triangles.ToArray() };
+    }
+
+    public static MeshData GetMeshDataByCase(PipeCase mazeCase, int eulerAngle) 
+    {
+        
+        //List<float3> Vertices = new List<float3>();
+        //List<int> Triangles = new List<int>();
+
+        MeshData meshData = new MeshData();
 
         switch (mazeCase)
         {
-            case 0: //invalid
+            case PipeCase.Invalid: //invalid
                 break;
-            case 1: // dead end case
+            case PipeCase.DeadEnd: // dead end case
                 break;
-            case 2: // straight pipe case
-                //populate vertices list
-                if (Vertices.Count < 2 * (pipeSegments - 1))
-                {
-                    for (int j = 0; j < 2 * (pipeSegments - 1); j++)
-                    {
-                        if (Vertices.Count < 2 * (pipeSegments - 1))
-                        {
-                            Vertices.Add(new float3(0f, 0f, 1f));
-                        }
-                    }
-                }
+            case PipeCase.L: // L case
+                break;
+            case PipeCase.T: // T-Junction case
+                break;
+            case PipeCase.Cross: // crossroads case
+                break;
+            case PipeCase.Straight: // straight pipe case
 
-                // create vertices list
-                float v = 0;
-                for (int i = 0; i < (pipeSegments - 1); i++)
-                {
-                    Vector3 point1 = GetPoint(0, v);
-                    Vector3 point2 = GetPoint(0, v) + (torusRadius) * new Vector3(0f, 0f, 2f);
-
-                    v += (2f * Mathf.PI) / (pipeSegments - 1);
-
-                    //vertex = Vertices[2 * i];
-                    //vertex.Value = point1;
-                    Vertices[2 * i] = point1;
-
-                    //vertex = Vertices[2 * i + 1];
-                    //vertex.Value = point2;
-                    Vertices[2 * i + 1] = point2;
-                }
-
-                //populate triangles list
-
-                int maxVertex = (2 * (pipeSegments - 1)) - 1;
-
-                if (Triangles.Count < (maxVertex + 1) * 3)
-                {
-                    for (int j = 0; j < (maxVertex + 1) * 3; j++)
-                    {
-                        if (Triangles.Count < (maxVertex + 1) * 3)
-                        {
-                            Triangles.Add(0);
-                        }
-                    }
-                }
-
-                //create triangles list
-                for (int i = 0; i < maxVertex + 1; i++)
-                {
-                    if (i % 2 == 1)
-                    {
-                        //triangle = Triangles[3 * i];
-                        //triangle.Value = (i + 2) % (maxVertex + 1);
-                        Triangles[3 * i] = (i + 2) % (maxVertex + 1);
-
-                        //triangle = Triangles[3 * i + 1];
-                        //triangle.Value = (i + 1) % (maxVertex + 1);
-                        Triangles[3 * i + 1] = (i + 1) % (maxVertex + 1);
-
-                        //triangle = Triangles[3 * i + 2];
-                        //triangle.Value = i;
-                        Triangles[3 * i + 2] = i;
-
-                    }
-                    else
-                    {
-                        //triangle = Triangles[3 * i];
-                        //triangle.Value = i;
-                        Triangles[3 * i] = i;
-
-                        //triangle = Triangles[3 * i + 1];
-                        //triangle.Value = (i + 1) % (maxVertex + 1);
-                        Triangles[3 * i + 1] = (i + 1) % (maxVertex + 1);
-
-                        //triangle = Triangles[3 * i + 2];
-                        //triangle.Value = (i + 2) % (maxVertex + 1);
-                        Triangles[3 * i + 2] = (i + 2) % (maxVertex + 1);
-                    }
-                }
-
+                meshData = GetStraightMeshData();
                 // create 
-                break;
-            case 3: // T-Junction case
-                break;
-            case 4: // crossroads case
                 break;
             default: //invalid
                 break;
@@ -206,16 +238,16 @@ public class MazeGeneratorSystem : SystemBase
 
         //rotate all vertices around pivot (centre)
         Quaternion rotationQuaternion = new Quaternion();
-        rotationQuaternion.eulerAngles = new Vector3(0, rotation, 0);
+        rotationQuaternion.eulerAngles = new Vector3(0, eulerAngle, 0);
 
-        Vector3 centre = (torusRadius) * new Vector3(0f, 0f, 1f);
+        Vector3 centre = new Vector3(0, 0, squareSize/2);
 
-        for (int i = 0; i < Vertices.Count; i++)
+        for (int i = 0; i < meshData.vertices.Length; i++)
         {
-            Vertices[i] = rotationQuaternion * ((Vector3)Vertices[i] - centre) + centre;
+            meshData.vertices[i] = rotationQuaternion * ((Vector3)meshData.vertices[i] - centre) + centre;
         }
 
-        return new MeshData() { vertices = Vertices.ToArray(), triangles = Triangles.ToArray() };
+        return meshData; // new MeshData() { vertices = Vertices.ToArray(), triangles = Triangles.ToArray() };
     }
 
     protected override void OnUpdate()
@@ -257,9 +289,9 @@ public class MazeGeneratorSystem : SystemBase
 
         // TODO we want to convert the array above into an array of Enums showing us which directions have pipes attached
 
-        PipeCase[,] caseArray2d = GetCaseArray(mazeArray2d);
+        PipeCaseFlags[,] caseArray2d = GetCaseArray(mazeArray2d);
 
-        NativeArray<PipeCase> caseArray = new NativeArray<PipeCase>(256, Allocator.TempJob);
+        NativeArray<PipeCaseFlags> caseArray = new NativeArray<PipeCaseFlags>(256, Allocator.TempJob);
 
         //convert 2D array into 1D array
         int index = 0;
@@ -276,12 +308,10 @@ public class MazeGeneratorSystem : SystemBase
         Entities.ForEach((Entity entity, int entityInQueryIndex, DynamicBuffer<IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices,
             ref Translation translation, ref Seed seed) =>
         {
-            float torusRadius = 10f;
-            float pipeRadius = 5f;
-            int pipeSegments = 10;
+
             //entities[entityInQueryIndex] = entity;
 
-            if (mazeNeedsUpdate && caseArray[entityInQueryIndex].HasFlag(PipeCase.Exists))
+            if (mazeNeedsUpdate && caseArray[entityInQueryIndex].HasFlag(PipeCaseFlags.Exists))
             {
                 //var random = new Unity.Mathematics.Random((uint)(entity.Index + entityInQueryIndex + randSeed[0] + 1) * 0x9F6ABC1);
                 //var randomVector = math.normalizesafe(random.NextFloat3() - new float3(0.5f, 0.5f, 0.5f));
@@ -289,30 +319,37 @@ public class MazeGeneratorSystem : SystemBase
 
                 float3 newTranslation = new float3(0f, 0f, 0f);
 
-                newTranslation.x = entityInQueryIndex % 16;
+                newTranslation.x = squareSize * (entityInQueryIndex % 16);
                 newTranslation.y = 0f;
-                newTranslation.z = entityInQueryIndex / 16;
+                newTranslation.z = squareSize * (entityInQueryIndex / 16);
 
                 translation.Value = newTranslation;
 
-                translation.Value *= 20; //new Vector3((new Unity.Mathematics.Random((uint)(entityInQueryIndex+ (randSeed[0]++)))).NextFloat(-100f, 100f), 0, (new Unity.Mathematics.Random((uint)(entityInQueryIndex + (randSeed[1]++)))).NextFloat(-100f, 100f));
+               // translation.Value *= squareSize; //new Vector3((new Unity.Mathematics.Random((uint)(entityInQueryIndex+ (randSeed[0]++)))).NextFloat(-100f, 100f), 0, (new Unity.Mathematics.Random((uint)(entityInQueryIndex + (randSeed[1]++)))).NextFloat(-100f, 100f));
 
                 MeshData meshData = new MeshData();
 
                 // TODO choose case based on array of cases
                 
-                if (caseArray[entityInQueryIndex] == (PipeCase.Exists | PipeCase.Up | PipeCase.Down))
+                if (caseArray[entityInQueryIndex] == (PipeCaseFlags.Exists | PipeCaseFlags.Up | PipeCaseFlags.Down))
                 {
-                    meshData = GetMeshDataByCase(2, pipeSegments, pipeRadius, torusRadius, 90);
+                    meshData = GetMeshDataByCase(PipeCase.Straight, 90);
                 }
-                else if (caseArray[entityInQueryIndex] == (PipeCase.Exists | PipeCase.Left | PipeCase.Right))
+                else if (caseArray[entityInQueryIndex] == (PipeCaseFlags.Exists | PipeCaseFlags.Left | PipeCaseFlags.Right))
                 {
-                    meshData = GetMeshDataByCase(2, pipeSegments, pipeRadius, torusRadius, 0);
+                    meshData = GetMeshDataByCase(PipeCase.Straight, 0);
                 }
-                    //else if (caseArray[entityInQueryIndex].HasFlag(PipeCase.Exists)) //== (PipeCase.Exists | PipeCase.Down| PipeCase.Up) )
-                    //{
-                    //    meshData = GetMeshDataByCase(2, pipeSegments, pipeRadius, torusRadius, 45);
-                    //}
+                //else if (caseArray[entityInQueryIndex] == (PipeCaseFlags.Exists | PipeCaseFlags.Down | PipeCaseFlags.Right))
+                //{
+                //    meshData = GetMeshDataByCase(PipeCase.Straight, 135);
+                ////}
+                //else if (caseArray[entityInQueryIndex].HasFlag(PipeCaseFlags.Exists)) //== (PipeCase.Exists | PipeCase.Down| PipeCase.Up) )
+                //{
+                //    meshData = GetMeshDataByCase(PipeCase.Straight, 0);
+                //}
+
+
+
 
                 if (meshData.vertices != null)
                 {
