@@ -99,7 +99,9 @@ public class GameManager : MonoBehaviour
 
     }
 
-
+    void OnDrawGizmos()
+    {
+    }
 
     // Update is called once per frame
     void Update()
