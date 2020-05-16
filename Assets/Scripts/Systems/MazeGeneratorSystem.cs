@@ -16,6 +16,7 @@ using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Entities.UniversalDelegates;
 
 using static PipeCases;
+using Packages.Rider.Editor;
 
 public class MazeGeneratorSystem : SystemBase
 {
@@ -38,30 +39,12 @@ public class MazeGeneratorSystem : SystemBase
     public static MeshData meshDataStraightCase;
     public static MeshData meshDataDeadEndCase;
 
-    public static int[,] mazeArray2d;
+    //public static int[,] mazeArray2d;
 
     protected override void OnCreate()
     {
 
-        mazeArray2d = new int[,]
-        {
-            {0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,0},
-            {0,1,0,0,0,1,0,0,0,0,0,1,0,1,1,1},
-            {0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0},
-            {0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0},
-            {0,0,0,1,0,0,1,0,0,0,1,1,1,1,1,0},
-            {0,1,1,1,1,1,1,0,0,0,0,0,1,0,1,1},
-            {0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0},
-            {2,1,1,1,1,1,1,0,1,0,1,1,1,1,1,2},
-            {0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0},
-            {1,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1},
-            {0,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1},
-            {0,0,0,1,0,1,0,1,1,1,1,1,1,1,0,1},
-            {0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,1},
-            {0,1,0,1,0,1,0,1,1,1,1,1,1,1,1,1},
-            {0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,0},
-            {0,1,1,1,1,1,1,1,1,1,0,1,0,1,1,1}
-        };
+        
 
 
         //mazeArray2d = new int[,]
@@ -84,6 +67,95 @@ public class MazeGeneratorSystem : SystemBase
         //    {1,1,0,0,0,1,0,0,0,1,0,0,0,0,1,1}
         //};
 
+    }
+
+    public static int[,] Get2dArrayFromSeed(string seed)
+    {
+        seed = "VGjlIHF16WPrIGJyb3duIFRoZSBxdWljayBicm93biA=";
+        byte[] binaryFromSeed = Convert.FromBase64String(seed);
+
+        int[] binary16FromSeed = new int[16];
+
+        int[,] outArray = new int[16, 16];
+
+        //for (int i = 0; i < binary16FromSeed.Length; i++)
+        //{
+        //    if (i > 0)
+        //    {
+        //        binary16FromSeed[i] = binaryFromSeed[2* i - 1] + binaryFromSeed[2 * i - 2];
+        //    }
+        //}
+
+        // TODO combine array of 0b11111111, 0b11111111 into array of 0b1111111111111111
+
+        for (int lineIndex = 0; lineIndex < binary16FromSeed.Length; lineIndex++)
+        {
+            //Debug.LogError(binaryFromSeed[lineIndex].ToString());
+
+            for (int i = 0; i < 16; i++) // for each bit in 2 bytes
+            {
+                //if (lineIndex == 0) Debug.LogError((uint)binaryFromSeed[lineIndex] >> i);
+
+                uint logicallyRightShifted = (uint)binaryFromSeed[lineIndex] >> i;
+
+                if (logicallyRightShifted % 2 == 0) // check if the number represented by the binary (shifted i times) is even (check there is a 0 at the end)
+                {
+                    outArray[i, lineIndex] = 0;
+                }
+                else
+                {
+                    outArray[i, lineIndex] = 1;
+                }
+            }
+        }
+        //outArray = new int[,]
+        //{
+        //    {0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,0},
+        //    { 0,1,0,0,0,1,0,0,0,0,0,1,0,1,1,1},
+        //    { 0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0},
+        //    { 0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0},
+        //    { 0,0,0,1,0,0,1,0,0,0,1,1,1,1,1,0},
+        //    { 0,1,1,1,1,1,1,0,0,0,0,0,1,0,1,1},
+        //    { 0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0},
+        //    { 2,1,1,1,1,1,1,0,1,0,1,1,1,1,1,2},
+        //    { 0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0},
+        //    { 1,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1},
+        //    { 0,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1},
+        //    { 0,0,0,1,0,1,0,1,1,1,1,1,1,1,0,1},
+        //    { 0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,1},
+        //    { 0,1,0,1,0,1,0,1,1,1,1,1,1,1,1,1},
+        //    { 0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,0},
+        //    { 0,1,1,1,1,1,1,1,1,1,0,1,0,1,1,1}
+        //};
+
+        string s = "";
+
+        for (int i = 0; i < 16; i++)
+        {
+            s += outArray[0, i];
+            
+        }
+        Debug.LogError(s);
+        return outArray;
+        //return new int[,]
+        //{
+        //    {0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,0},
+        //    {0,1,0,0,0,1,0,0,0,0,0,1,0,1,1,1},
+        //    {0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0},
+        //    {0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0},
+        //    {0,0,0,1,0,0,1,0,0,0,1,1,1,1,1,0},
+        //    {0,1,1,1,1,1,1,0,0,0,0,0,1,0,1,1},
+        //    {0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0},
+        //    {2,1,1,1,1,1,1,0,1,0,1,1,1,1,1,2},
+        //    {0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0},
+        //    {1,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1},
+        //    {0,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1},
+        //    {0,0,0,1,0,1,0,1,1,1,1,1,1,1,0,1},
+        //    {0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,1},
+        //    {0,1,0,1,0,1,0,1,1,1,1,1,1,1,1,1},
+        //    {0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,0},
+        //    {0,1,1,1,1,1,1,1,1,1,0,1,0,1,1,1}
+        //};
     }
 
     //Update mesh code
@@ -110,8 +182,8 @@ public class MazeGeneratorSystem : SystemBase
         if (mazeNeedsUpdate)
         {
             //size of array is maximum possible size of maze (256 tubes)
-            NativeArray<int> numberOfVertsArray = new NativeArray<int>(256, Allocator.TempJob);
-            NativeArray<int> numberOfTrisArray = new NativeArray<int>(256, Allocator.TempJob);
+            NativeArray<int> numberOfVertsArray = new NativeArray<int>(1024, Allocator.TempJob);
+            NativeArray<int> numberOfTrisArray = new NativeArray<int>(1024, Allocator.TempJob);
 
             //// change 1s to 0s on maze update
             //for (int y = 0; y < 16; y++)
@@ -129,46 +201,46 @@ public class MazeGeneratorSystem : SystemBase
             //    }
             //}
 
-            PipeConnections[,] caseArray2d = PipeCases.GetCaseArray(mazeArray2d);
 
             NativeArray<PipeConnections> caseArray = new NativeArray<PipeConnections>(256, Allocator.TempJob);
 
-            //convert 2D array into 1D array
-            int index = 0;
-            for (int y = 0; y < 16; y++)
-            {
-                for (int x = 0; x < 16; x++)
-                {
-                    caseArray[index] = caseArray2d[x, y];
-                    index++;
-                }
-            }
+            
 
             // assigns mesh data to each entity
             Entities.ForEach((Entity entity, int entityInQueryIndex, DynamicBuffer<IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices,
                 ref Translation translation, ref Seed seed) =>
             {
-                for (int i = 0; i < Vertices.Length; i++)
+                PipeConnections[,] caseArray2d = GetCaseArray(Get2dArrayFromSeed(seed.Value.ToString()));
+
+                //convert 2D array into 1D array
+                int index = 0;
+                for (int y = 0; y < 16; y++)
                 {
-                    
+                    for (int x = 0; x < 16; x++)
+                    {
+                        caseArray[index] = caseArray2d[x, y];
+                        index++;
+                    }
                 }
+
+                int positionOnMaze = entityInQueryIndex % 256;
                 //entities[entityInQueryIndex] = entity;
 
-                if (mazeNeedsUpdate && caseArray[entityInQueryIndex].HasFlag(PipeConnections.Exists))
+                if (mazeNeedsUpdate && caseArray[positionOnMaze].HasFlag(PipeConnections.Exists))
                 {
                     float3 newTranslation = new float3(0f, 0f, 0f);
 
-                    newTranslation.x = squareSize * (entityInQueryIndex % 16);
+                    newTranslation.x = squareSize * (positionOnMaze % 16);
                     newTranslation.y = 0f;
-                    newTranslation.z = squareSize * (entityInQueryIndex / 16);
+                    newTranslation.z = squareSize * (positionOnMaze / 16);
 
-                    translation.Value = newTranslation;
+                    translation.Value += newTranslation;
 
                     // translation.Value *= squareSize; //new Vector3((new Unity.Mathematics.Random((uint)(entityInQueryIndex+ (randSeed[0]++)))).NextFloat(-100f, 100f), 0, (new Unity.Mathematics.Random((uint)(entityInQueryIndex + (randSeed[1]++)))).NextFloat(-100f, 100f));
 
                     MeshData meshData = new MeshData();
 
-                    switch (caseArray[entityInQueryIndex])
+                    switch (caseArray[positionOnMaze])
                     {
                         // Straight cases
                         case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right:
@@ -226,9 +298,9 @@ public class MazeGeneratorSystem : SystemBase
                             break;
 
                         //theoretically the program should not reach this
-                        default:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.Cross, 0);
-                            break;
+                        //default:
+                        //    meshData = GetRotatedMeshDataByCase(PipeCase.Cross, 0);
+                        //    break;
 
                     }
                     if (meshData.vertices != null)

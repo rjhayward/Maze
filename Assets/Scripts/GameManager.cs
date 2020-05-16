@@ -93,6 +93,44 @@ public class GameManager : MonoBehaviour
 
         mazeEntities.Dispose();
 
+        // max amount of mazeEntities (16*16 = 256)
+        NativeArray<Entity> mazeEntities2 = new NativeArray<Entity>(256, Allocator.Temp);
+
+        entityManager.CreateEntity(mazeArchetype, mazeEntities2);
+
+        for (int i = 0; i < mazeEntities2.Length; i++)
+        {
+            entityManager.SetComponentData(mazeEntities2[i], new Translation
+            {
+                Value = new Vector3(0, 0, PipeCases.torusRadius*32)
+            });
+
+            entityManager.AddBuffer<IntBufferElement>(mazeEntities2[i]);
+
+            entityManager.AddBuffer<Float3BufferElement>(mazeEntities2[i]);
+        }
+
+        mazeEntities2.Dispose();
+
+
+        // max amount of mazeEntities (16*16 = 256)
+        NativeArray<Entity> mazeEntities3 = new NativeArray<Entity>(256, Allocator.Temp);
+
+        entityManager.CreateEntity(mazeArchetype, mazeEntities3);
+
+        for (int i = 0; i < mazeEntities3.Length; i++)
+        {
+            entityManager.SetComponentData(mazeEntities3[i], new Translation
+            {
+                Value = new Vector3(0, 0, PipeCases.torusRadius * 64)
+            });
+
+            entityManager.AddBuffer<IntBufferElement>(mazeEntities3[i]);
+
+            entityManager.AddBuffer<Float3BufferElement>(mazeEntities3[i]);
+        }
+
+        mazeEntities3.Dispose();
     }
 
     void OnDrawGizmos()
