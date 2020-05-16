@@ -848,21 +848,6 @@ public class MazeGeneratorSystem : SystemBase
             }
         }
 
-        //for (int i = 0; i < ArrayA.Count; i++)
-        //{
-        //    Gizmos.DrawWireSphere(ArrayA[i], 0.5f);
-        //}
-
-        //for (int i = 0; i < ArrayB.Count; i++)
-        //{
-        //    Gizmos.DrawWireSphere(ArrayB[i], 0.5f);
-        //}
-
-        //for (int i = 0; i < ArrayC.Count; i++)
-        //{
-        //    Gizmos.DrawWireSphere(ArrayC[i], 0.5f);
-        //}
-
         MeshData outputMeshData;
 
         MeshData meshDataQuarterCross = new MeshData() { vertices = ArrayA.ToArray(), triangles = TrianglesA.ToArray() };
@@ -882,12 +867,8 @@ public class MazeGeneratorSystem : SystemBase
     
    
 
-    public static MeshData GetMeshDataByCase(PipeCase mazeCase, int eulerAngle) 
+    public static MeshData GetRotatedMeshDataByCase(PipeCase mazeCase, int eulerAngle) 
     {
-        
-        //List<float3> Vertices = new List<float3>();
-        //List<int> Triangles = new List<int>();
-
         MeshData meshData = new MeshData();
 
         switch (mazeCase)
@@ -1043,57 +1024,57 @@ public class MazeGeneratorSystem : SystemBase
                 {
                     // Straight cases
                     case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right:
-                        meshData = GetMeshDataByCase(PipeCase.Straight, 0);
+                        meshData = GetRotatedMeshDataByCase(PipeCase.Straight, 0);
                         break;
                     case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down:
-                        meshData = GetMeshDataByCase(PipeCase.Straight, 90);
+                        meshData = GetRotatedMeshDataByCase(PipeCase.Straight, 90);
                         break;
                     // L cases
                     case PipeConnections.Exists | PipeConnections.Down | PipeConnections.Right:
-                        meshData = GetMeshDataByCase(PipeCase.L, 0);
+                        meshData = GetRotatedMeshDataByCase(PipeCase.L, 0);
                         break;
                     case PipeConnections.Exists | PipeConnections.Down | PipeConnections.Left:
-                        meshData = GetMeshDataByCase(PipeCase.L, 90);
+                        meshData = GetRotatedMeshDataByCase(PipeCase.L, 90);
                         break;
                     case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Left:
-                        meshData = GetMeshDataByCase(PipeCase.L, 180);
+                        meshData = GetRotatedMeshDataByCase(PipeCase.L, 180);
                         break;
                     case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Right:
-                        meshData = GetMeshDataByCase(PipeCase.L, 270);
+                        meshData = GetRotatedMeshDataByCase(PipeCase.L, 270);
                         break;
                     // T cases
                     case PipeConnections.Exists | PipeConnections.Down | PipeConnections.Up | PipeConnections.Right:
-                        meshData = GetMeshDataByCase(PipeCase.T, 0);
+                        meshData = GetRotatedMeshDataByCase(PipeCase.T, 0);
                         break;
                     case PipeConnections.Exists |  PipeConnections.Left | PipeConnections.Right | PipeConnections.Down :
-                        meshData = GetMeshDataByCase(PipeCase.T, 90);
+                        meshData = GetRotatedMeshDataByCase(PipeCase.T, 90);
                         break;
                     case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down | PipeConnections.Left:
-                        meshData = GetMeshDataByCase(PipeCase.T, 180);
+                        meshData = GetRotatedMeshDataByCase(PipeCase.T, 180);
                         break;
                     case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right | PipeConnections.Up:
-                        meshData = GetMeshDataByCase(PipeCase.T, 270);
+                        meshData = GetRotatedMeshDataByCase(PipeCase.T, 270);
                         break;
                     // DeadEnd cases
                     case PipeConnections.Exists | PipeConnections.Left:
-                        meshData = GetMeshDataByCase(PipeCase.DeadEnd, 0); // TODO change to PipeCase.DeadEnd case
+                        meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 0); // TODO change to PipeCase.DeadEnd case
                         break;
                     case PipeConnections.Exists | PipeConnections.Up:
-                        meshData = GetMeshDataByCase(PipeCase.DeadEnd, 90); // TODO change to PipeCase.DeadEnd case
+                        meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 90); // TODO change to PipeCase.DeadEnd case
                         break;
                     case PipeConnections.Exists | PipeConnections.Right:
-                        meshData = GetMeshDataByCase(PipeCase.DeadEnd, 180); // TODO change to PipeCase.DeadEnd case
+                        meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 180); // TODO change to PipeCase.DeadEnd case
                         break;
                     case PipeConnections.Exists | PipeConnections.Down:
-                        meshData = GetMeshDataByCase(PipeCase.DeadEnd, 270); // TODO change to PipeCase.DeadEnd case
+                        meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 270); // TODO change to PipeCase.DeadEnd case
                         break;
                     // Cross case
                     case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down | PipeConnections.Left | PipeConnections.Right:
-                        meshData = GetMeshDataByCase(PipeCase.Cross, 0);
+                        meshData = GetRotatedMeshDataByCase(PipeCase.Cross, 0);
                         break;
                     //exit case
                     case PipeConnections.Exists:
-                        meshData = GetMeshDataByCase(PipeCase.Cross, 0);
+                        meshData = GetRotatedMeshDataByCase(PipeCase.Cross, 0);
                         break;
                         //default:
                         //    meshData = GetMeshDataByCase(PipeCase.Cross, 0); // TODO change to PipeCase.DeadEnd case
@@ -1154,100 +1135,7 @@ public class MazeGeneratorSystem : SystemBase
                     numberOfVertsArray[entityInQueryIndex] = vertices.Length;
                     numberOfTrisArray[entityInQueryIndex] = triangles.Length;
 
-
                 }
-
-                // START OF PLACEHOLDER CODE
-
-                //if (Vertices.Length < 2 * (pipeSegments - 1))
-                //{
-                //    //populate vertex buffer
-                //    for (int j = 0; j < 2 * (pipeSegments - 1); j++)
-                //    {
-                //        if (Vertices.Length < 2 * (pipeSegments - 1))
-                //        {
-                //            Vertices.Add(new Float3BufferElement { Value = new float3(0f, 0f, 1f) });
-                //        }
-                //    }
-                //}
-
-                //float v = 0;
-                ////used to generate the array of vertices as required 
-                //Float3BufferElement vertex;
-                //for (int i = 0; i < (pipeSegments - 1); i++)
-                //{
-                //    Vector3 point1 = (Vector3)translation.Value + GetPoint(0, v);
-                //    Vector3 point2 = (Vector3)translation.Value + GetPoint(0, v) + torusRadius / 2 * new Vector3(0f, 0f, 2f);
-
-                //    v += (2f * Mathf.PI) / (pipeSegments - 1);
-
-                //    vertex = Vertices[2 * i];
-                //    vertex.Value = point1;
-                //    Vertices[2 * i] = vertex;
-
-                //    vertex = Vertices[2 * i + 1];
-                //    vertex.Value = point2;
-                //    Vertices[2 * i + 1] = vertex;
-
-                //    numberOfVertsArray[entityInQueryIndex] += 2;
-                //}
-
-
-                //int maxVertex = (2 * (pipeSegments - 1)) - 1;
-
-                ////populate triangles buffer
-                //if (Triangles.Length < (maxVertex + 1) * 3)
-                //{
-                //    for (int j = 0; j < (maxVertex + 1) * 3; j++)
-                //    {
-                //        if (Triangles.Length < (maxVertex + 1) * 3)
-                //        {
-                //            Triangles.Add(new IntBufferElement { Value = 0 });
-                //        }
-                //    }
-                //}
-
-                ////used to generate the array of triangles as required 
-                //IntBufferElement triangle;
-                //for (int i = 0; i < maxVertex + 1; i++)
-                //{
-                //    if (i % 2 == 1)
-                //    {
-                //        triangle = Triangles[3 * i];
-                //        triangle.Value = (i + 2) % (maxVertex + 1);
-                //        Triangles[3 * i] = triangle;
-
-                //        triangle = Triangles[3 * i + 1];
-                //        triangle.Value = (i + 1) % (maxVertex + 1);
-                //        Triangles[3 * i + 1] = triangle;
-
-                //        triangle = Triangles[3 * i + 2];
-                //        triangle.Value = i;
-                //        Triangles[3 * i + 2] = triangle;
-
-                //    }
-                //    else
-                //    {
-                //        triangle = Triangles[3 * i];
-                //        triangle.Value = i;
-                //        Triangles[3 * i] = triangle;
-
-                //        triangle = Triangles[3 * i + 1];
-                //        triangle.Value = (i + 1) % (maxVertex + 1);
-                //        Triangles[3 * i + 1] = triangle;
-
-                //        triangle = Triangles[3 * i + 2];
-                //        triangle.Value = (i + 2) % (maxVertex + 1);
-                //        Triangles[3 * i + 2] = triangle;
-                //    }
-
-                //    numberOfTrisArray[entityInQueryIndex] += 3;
-                //}
-
-
-                // END OF PLACEHOLDER CODE
-
-
             }
         }).ScheduleParallel();
         CompleteDependency();
@@ -1276,7 +1164,7 @@ public class MazeGeneratorSystem : SystemBase
         NativeArray<int> mazeTriangles = new NativeArray<int>(numTris, Allocator.TempJob);
 
 
-        // Stitch together meshes
+        // Stitch together all meshes
         Entities.ForEach((int entityInQueryIndex, DynamicBuffer<IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices) =>
         {
             if (mazeNeedsUpdate)
@@ -1335,45 +1223,3 @@ public class MazeGeneratorSystem : SystemBase
         mazeTriangles.Dispose();
     }
 }
-
-
-
-
-
-// TODO check if any of this is still useful
-
-//    for (int i = 0; i < entities.Length; i++)
-//    {
-
-//        Vector3[] originalVertices = maze.mesh.vertices;
-//        int[] originalTriangles = maze.mesh.triangles;
-
-//        Vector3[] verticesToWrite = new Vector3[vertices.Length + originalVertices.Length];
-//        int[] trianglesToWrite = new int[triangles.Length + originalTriangles.Length];
-
-//        for (int j = 0; j < vertices.Length + originalVertices.Length; j++)
-//        {
-//            if (j < originalVertices.Length)
-//            {
-//                verticesToWrite[j] = originalVertices[j];
-//            }
-//            else
-//            {
-//                verticesToWrite[j] = vertices[j - originalVertices.Length].Value;
-//            }
-//        }
-
-//        for (int j = 0; j < triangles.Length + originalTriangles.Length; j++)
-//        {
-//            if (j < originalTriangles.Length)
-//            {
-//                trianglesToWrite[j] = originalTriangles[j];
-//            }
-//            else
-//            {
-//                trianglesToWrite[j] = triangles[j - originalTriangles.Length].Value + originalVertices.Length;
-//            }
-//        }
-
-
-//    }
