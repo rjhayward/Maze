@@ -34,7 +34,7 @@ public class PipeCases : MonoBehaviour
     }
 
     public static readonly float torusRadius = 10f;
-    public static readonly float pipeRadius = 6f;
+    public static readonly float pipeRadius = 7f;
     public static readonly int pipeSegments = 17;
     public static readonly int torusSegments = 17;
     public static readonly float squareSize = 2 * torusRadius;// math.sqrt(2 * math.pow(torusRadius,2)) + pipeRadius;
@@ -142,7 +142,6 @@ public class PipeCases : MonoBehaviour
 
     public static MeshData GetCrossMeshData()
     {
-        // TODO rename these lol!!
         List<float3> VertArray1 = new List<float3>(); // Root of T 
         List<float3> VertArray1Intersect = new List<float3>();
 
@@ -607,10 +606,8 @@ public class PipeCases : MonoBehaviour
 
     public static MeshData GetTMeshData()
     {
-        // TODO rename these lol!!
         List<float3> VertArray1 = new List<float3>(); // Root of T 
         List<float3> VertArray1Intersect = new List<float3>();
-
 
         List<float3> VertArray2 = new List<float3>(); // Left of T
         List<float3> VertArray2Intersect = new List<float3>();

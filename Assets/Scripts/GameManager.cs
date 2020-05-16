@@ -38,9 +38,6 @@ public class GameManager : MonoBehaviour
         );
 
 
-
-
-
         // TODO split these into separate functions
 
         EntityArchetype shipArchetype = entityManager.CreateArchetype(
@@ -61,22 +58,21 @@ public class GameManager : MonoBehaviour
         
         entityManager.SetComponentData(shipEntity, new Rotation
         {
-            Value = Quaternion.Euler(90,0,0)
+            Value = Quaternion.Euler(0,0,0)
         });
 
-
-
-
+        entityManager.SetComponentData(shipEntity, new Translation
+        {
+            Value = new Vector3(PipeCases.torusRadius*14, -1f, 0)
+        });
 
         // TODO split these into separate functions
-
         EntityArchetype mazeArchetype = entityManager.CreateArchetype(
             typeof(IntBufferElement), //Triangles
             typeof(Float3BufferElement), //Vertices
             typeof(Translation),
             typeof(Seed)
         );
-
 
         // max amount of mazeEntities (16*16 = 256)
         NativeArray<Entity> mazeEntities = new NativeArray<Entity>(256, Allocator.Temp);

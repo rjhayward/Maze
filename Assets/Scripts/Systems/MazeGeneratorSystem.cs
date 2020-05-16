@@ -62,6 +62,28 @@ public class MazeGeneratorSystem : SystemBase
             {0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,0},
             {0,1,1,1,1,1,1,1,1,1,0,1,0,1,1,1}
         };
+
+
+        //mazeArray2d = new int[,]
+        //{
+        //    {0,0,0,0,0,1,0,0,0,1,0,0,0,0,1,1},
+        //    {1,1,0,1,1,1,0,1,0,1,0,1,1,1,1,1},
+        //    {1,1,0,1,1,1,0,1,0,1,0,0,0,0,1,1},
+        //    {0,0,0,1,1,1,0,0,0,1,0,1,1,1,1,1},
+        //    {1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1},
+        //    {1,0,0,0,0,1,0,1,1,0,1,1,1,1,1,1},
+        //    {1,0,1,1,1,1,0,1,1,0,1,0,0,0,0,1},
+        //    {1,0,0,0,0,1,0,1,1,0,1,0,1,1,1,1},
+        //    {1,1,1,1,0,1,0,1,1,0,1,0,1,1,1,1},
+        //    {1,1,1,1,0,1,0,1,1,0,1,0,1,1,1,1},
+        //    {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1},
+        //    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+        //    {1,1,1,1,0,1,0,0,0,1,0,0,0,0,1,1},
+        //    {1,1,0,0,0,1,1,0,1,1,0,1,1,1,1,1},
+        //    {1,1,0,1,0,1,1,0,1,1,0,1,1,1,1,1},
+        //    {1,1,0,0,0,1,0,0,0,1,0,0,0,0,1,1}
+        //};
+
     }
 
     //Update mesh code
@@ -91,47 +113,21 @@ public class MazeGeneratorSystem : SystemBase
             NativeArray<int> numberOfVertsArray = new NativeArray<int>(256, Allocator.TempJob);
             NativeArray<int> numberOfTrisArray = new NativeArray<int>(256, Allocator.TempJob);
 
-            //NativeArray<int> randSeed = new NativeArray<int>(1, Allocator.TempJob);
-            //randSeed[0] = UnityEngine.Random.Range(0,177); //arbitrary random seed
-
-
-
-            //int[,] mazeArray2d = new int[,]
+            //// change 1s to 0s on maze update
+            //for (int y = 0; y < 16; y++)
             //{
-            //    {0,0,0,0,0,1,0,0,0,1,0,0,0,0,1,1},
-            //    {1,1,0,1,1,1,0,1,0,1,0,1,1,1,1,1},
-            //    {1,1,0,1,1,1,0,1,0,1,0,0,0,0,1,1},
-            //    {0,0,0,1,1,1,0,0,0,1,0,1,1,1,1,1},
-            //    {1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1},
-            //    {1,0,0,0,0,1,0,1,1,0,1,1,1,1,1,1},
-            //    {1,0,1,1,1,1,0,1,1,0,1,0,0,0,0,1},
-            //    {1,0,0,0,0,1,0,1,1,0,1,0,1,1,1,1},
-            //    {1,1,1,1,0,1,0,1,1,0,1,0,1,1,1,1},
-            //    {1,1,1,1,0,1,0,1,1,0,1,0,1,1,1,1},
-            //    {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1},
-            //    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-            //    {1,1,1,1,0,1,0,0,0,1,0,0,0,0,1,1},
-            //    {1,1,0,0,0,1,1,0,1,1,0,1,1,1,1,1},
-            //    {1,1,0,1,0,1,1,0,1,1,0,1,1,1,1,1},
-            //    {1,1,0,0,0,1,0,0,0,1,0,0,0,0,1,1}
-            //};
-
-            // change 1s to 0s on maze update
-            for (int y = 0; y < 16; y++)
-            {
-                for (int x = 0; x < 16; x++)
-                {
-                    if (mazeArray2d[x, y] == 1)
-                    {
-                        mazeArray2d[x, y] = 0;
-                    }
-                    else if (mazeArray2d[x, y] == 0)
-                    {
-                        mazeArray2d[x, y] = 1;
-                    }
-                }
-            }
-
+            //    for (int x = 0; x < 16; x++)
+            //    {
+            //        if (mazeArray2d[x, y] == 1)
+            //        {
+            //            mazeArray2d[x, y] = 0;
+            //        }
+            //        else if (mazeArray2d[x, y] == 0)
+            //        {
+            //            mazeArray2d[x, y] = 1;
+            //        }
+            //    }
+            //}
 
             PipeConnections[,] caseArray2d = PipeCases.GetCaseArray(mazeArray2d);
 
@@ -160,11 +156,6 @@ public class MazeGeneratorSystem : SystemBase
 
                 if (mazeNeedsUpdate && caseArray[entityInQueryIndex].HasFlag(PipeConnections.Exists))
                 {
-
-                    //var random = new Unity.Mathematics.Random((uint)(entity.Index + entityInQueryIndex + randSeed[0] + 1) * 0x9F6ABC1);
-                    //var randomVector = math.normalizesafe(random.NextFloat3() - new float3(0.5f, 0.5f, 0.5f));
-                    //randomVector.y = 0;
-
                     float3 newTranslation = new float3(0f, 0f, 0f);
 
                     newTranslation.x = squareSize * (entityInQueryIndex % 16);
@@ -176,8 +167,6 @@ public class MazeGeneratorSystem : SystemBase
                     // translation.Value *= squareSize; //new Vector3((new Unity.Mathematics.Random((uint)(entityInQueryIndex+ (randSeed[0]++)))).NextFloat(-100f, 100f), 0, (new Unity.Mathematics.Random((uint)(entityInQueryIndex + (randSeed[1]++)))).NextFloat(-100f, 100f));
 
                     MeshData meshData = new MeshData();
-
-                    // TODO choose case based on array of cases
 
                     switch (caseArray[entityInQueryIndex])
                     {
@@ -216,16 +205,16 @@ public class MazeGeneratorSystem : SystemBase
                             break;
                         // DeadEnd cases
                         case PipeConnections.Exists | PipeConnections.Left:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 0); // TODO change to PipeCase.DeadEnd case
+                            meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 0);
                             break;
                         case PipeConnections.Exists | PipeConnections.Up:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 90); // TODO change to PipeCase.DeadEnd case
+                            meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 90);
                             break;
                         case PipeConnections.Exists | PipeConnections.Right:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 180); // TODO change to PipeCase.DeadEnd case
+                            meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 180);
                             break;
                         case PipeConnections.Exists | PipeConnections.Down:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 270); // TODO change to PipeCase.DeadEnd case
+                            meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 270);
                             break;
                         // Cross case
                         case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down | PipeConnections.Left | PipeConnections.Right:
@@ -235,9 +224,11 @@ public class MazeGeneratorSystem : SystemBase
                         case PipeConnections.Exists:
                             meshData = GetRotatedMeshDataByCase(PipeCase.Cross, 0);
                             break;
-                            //default:
-                            //    meshData = GetMeshDataByCase(PipeCase.Cross, 0); // TODO change to PipeCase.DeadEnd case
-                            //    break;
+
+                        //theoretically the program should not reach this
+                        default:
+                            meshData = GetRotatedMeshDataByCase(PipeCase.Cross, 0);
+                            break;
 
                     }
                     if (meshData.vertices != null)
@@ -379,3 +370,11 @@ public class MazeGeneratorSystem : SystemBase
         }
     }
 }
+
+
+// Code for generating random numbers inside job
+//NativeArray<int> randSeed = new NativeArray<int>(1, Allocator.TempJob);
+//randSeed[0] = UnityEngine.Random.Range(0,177); //arbitrary random seed
+//var random = new Unity.Mathematics.Random((uint)(entity.Index + entityInQueryIndex + randSeed[0] + 1) * 0x9F6ABC1);
+//var randomVector = math.normalizesafe(random.NextFloat3() - new float3(0.5f, 0.5f, 0.5f));
+//randomVector.y = 0;

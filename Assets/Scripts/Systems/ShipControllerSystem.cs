@@ -24,21 +24,21 @@ public class ShipControllerSystem : SystemBase
         // apply rotation to all ships based on user input
         Entities.ForEach((ref Rotation rotation, in IsShip isShip) =>
         {
-            if (isDownPressed)
-            {
-                rotation.Value *= Quaternion.Euler(new Vector3(-0.3f, 0f, 0f));
-            }
-            if (isUpPressed)
-            {
-                rotation.Value *= Quaternion.Euler(new Vector3(0.3f, 0f, 0f));
-            }
+            //if (isDownPressed)
+            //{
+            //    rotation.Value *= Quaternion.Euler(new Vector3(-0.4f, 0f, 0f));
+            //}
+            //if (isUpPressed)
+            //{
+            //    rotation.Value *= Quaternion.Euler(new Vector3(0.4f, 0f, 0f));
+            //}
             if (isLeftPressed)
             {
-                rotation.Value *= Quaternion.Euler(new Vector3(0f, 0f, 0.5f));
+                rotation.Value *= Quaternion.Euler(new Vector3(0f, -0.4f, 0f));
             }
             if (isRightPressed)
             {
-                rotation.Value *= Quaternion.Euler(new Vector3(0f, 0f, -0.5f));
+                rotation.Value *= Quaternion.Euler(new Vector3(0f, 0.4f, 0f));
             }
         }).ScheduleParallel();
 
