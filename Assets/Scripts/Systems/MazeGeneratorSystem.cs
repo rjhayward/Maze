@@ -20,6 +20,7 @@ using Packages.Rider.Editor;
 
 public class MazeGeneratorSystem : SystemBase
 {
+
     // On start create 2 native arrays: verts and tris
 
     // On update fill the entities with new mesh values if key is pressed
@@ -27,26 +28,26 @@ public class MazeGeneratorSystem : SystemBase
     // Update the maze's mesh with this one stitched mesh (mesh update is expensive)
 
 
-    public static readonly float torusRadius = 10f;
-    public static readonly float pipeRadius = 6f;
-    public static readonly int pipeSegments = 17;
-    public static readonly int torusSegments = 17;
-    public static readonly float squareSize = 2 * torusRadius;// math.sqrt(2 * math.pow(torusRadius,2)) + pipeRadius;
+    //public static readonly float torusRadius = 10f;
+    //public static readonly float pipeRadius = 6f;
+    //public static readonly int pipeSegments = 17;
+    //public static readonly int torusSegments = 17;
+    //public static readonly float squareSize = 2 * torusRadius;// math.sqrt(2 * math.pow(torusRadius,2)) + pipeRadius;
 
-    public static MeshData meshDataCrossCase;
-    public static MeshData meshDataTCase;
-    public static MeshData meshDataLCase;
-    public static MeshData meshDataStraightCase;
-    public static MeshData meshDataDeadEndCase;
+    //public static MeshData meshDataCrossCase;
+    //public static MeshData meshDataTCase;
+    //public static MeshData meshDataLCase;
+    //public static MeshData meshDataStraightCase;
+    //public static MeshData meshDataDeadEndCase;
 
     //public static int[,] mazeArray2d;
 
+    Singleton singleton;
+    GameObject parentMaze;
     protected override void OnCreate()
     {
 
         
-
-
         //mazeArray2d = new int[,]
         //{
         //    {0,0,0,0,0,1,0,0,0,1,0,0,0,0,1,1},
@@ -69,6 +70,16 @@ public class MazeGeneratorSystem : SystemBase
 
     }
 
+    protected override void OnStartRunning()
+    {
+
+        parentMaze = GameObject.Find("Maze");
+
+
+        singleton = GameObject.Find("Singleton").GetComponent<Singleton>();
+    }
+
+    // TODO move outside this class, we will use it to pass a 1dCaseArray into the entity and that is all, the entity will not use the raw seed
     public static int[,] Get2dArrayFromSeed(string seed)
     {
         seed = "VGjlIHF16WPrIGJyb3duIFRoZSBxdWljayBicm93biA=";
@@ -159,17 +170,18 @@ public class MazeGeneratorSystem : SystemBase
     }
 
     //Update mesh code
-    void UpdateMesh(Vector3[] mazeVertices, int[] mazeTriangles)
+    void UpdateMesh(Vector3[] mazeVertices, int[] mazeTriangles, int meshIndex) // TODO add one mesh per maze
     {
-        Maze maze = GameObject.Find("Maze").GetComponent<Maze>();
+        Maze newMaze = GameObject.Instantiate<Maze>(singleton.mazePrefab);
+        newMaze.transform.parent = parentMaze.transform;
+        //newMaze = newMaze.GetComponent<Maze>();
+        newMaze.mesh.Clear();
 
-        maze.mesh.Clear();
+        newMaze.mesh.SetVertices(mazeVertices);
+        newMaze.mesh.SetTriangles(mazeTriangles, 0); //submesh 0
 
-        maze.mesh.SetVertices(mazeVertices);
-        maze.mesh.SetTriangles(mazeTriangles, 0); //submesh 0
-
-        maze.mesh.RecalculateBounds();
-        maze.mesh.RecalculateNormals();
+        newMaze.mesh.RecalculateBounds();
+        newMaze.mesh.RecalculateNormals();
     }
 
 
@@ -177,13 +189,13 @@ public class MazeGeneratorSystem : SystemBase
     {
         float deltaTime = Time.DeltaTime;
 
-        bool mazeNeedsUpdate = Input.GetKeyDown(KeyCode.Space);
+        bool mazeNeedsUpdate = singleton.mazeNeedsUpdate;// Input.GetKeyDown(KeyCode.Space);
 
         if (mazeNeedsUpdate)
         {
             //size of array is maximum possible size of maze (256 tubes)
-            NativeArray<int> numberOfVertsArray = new NativeArray<int>(1024, Allocator.TempJob);
-            NativeArray<int> numberOfTrisArray = new NativeArray<int>(1024, Allocator.TempJob);
+            NativeArray<int> numberOfVertsArray = new NativeArray<int>(256 * singleton.numberOfMazes, Allocator.TempJob);
+            NativeArray<int> numberOfTrisArray = new NativeArray<int>(256 * singleton.numberOfMazes, Allocator.TempJob);
 
             //// change 1s to 0s on maze update
             //for (int y = 0; y < 16; y++)
@@ -202,45 +214,37 @@ public class MazeGeneratorSystem : SystemBase
             //}
 
 
-            NativeArray<PipeConnections> caseArray = new NativeArray<PipeConnections>(256, Allocator.TempJob);
+            //NativeArray<PipeConnections> caseArray = new NativeArray<PipeConnections>(256, Allocator.TempJob);
 
             
-
+            // TODO add new buffer to contain the actual preconverted case array "ref DynamicBuffer<CaseArrayElement> caseArray"
+            // TODO add bool mazeNeedsUpdate as a component that we can set outside and then reset to false once the Update is completed.
             // assigns mesh data to each entity
             Entities.ForEach((Entity entity, int entityInQueryIndex, DynamicBuffer<IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices,
-                ref Translation translation, ref Seed seed) =>
+                ref Translation translation, ref PipeCaseComponent pipeCaseComponent, ref ToCreate toCreate) =>
             {
-                PipeConnections[,] caseArray2d = GetCaseArray(Get2dArrayFromSeed(seed.Value.ToString()));
-
-                //convert 2D array into 1D array
-                int index = 0;
-                for (int y = 0; y < 16; y++)
+                PipeConnections thisCase = (PipeConnections) pipeCaseComponent.Value;
+                                
+                if (toCreate.Value && (uint)thisCase %2 == 1) //has flag PipeConnections.Exists (1)
                 {
-                    for (int x = 0; x < 16; x++)
-                    {
-                        caseArray[index] = caseArray2d[x, y];
-                        index++;
-                    }
-                }
+                    int positionOnMaze = entityInQueryIndex % 256;
 
-                int positionOnMaze = entityInQueryIndex % 256;
-                //entities[entityInQueryIndex] = entity;
+                    //if (toCreate.Value)
+                    //{
+                        float3 newTranslation = new float3(0f, 0f, 0f);
 
-                if (mazeNeedsUpdate && caseArray[positionOnMaze].HasFlag(PipeConnections.Exists))
-                {
-                    float3 newTranslation = new float3(0f, 0f, 0f);
+                        newTranslation.x = squareSize * (positionOnMaze % 16);
+                        newTranslation.y = 0f;
+                        newTranslation.z = squareSize * (positionOnMaze / 16);
 
-                    newTranslation.x = squareSize * (positionOnMaze % 16);
-                    newTranslation.y = 0f;
-                    newTranslation.z = squareSize * (positionOnMaze / 16);
+                        translation.Value += newTranslation;
 
-                    translation.Value += newTranslation;
-
+                    //}
                     // translation.Value *= squareSize; //new Vector3((new Unity.Mathematics.Random((uint)(entityInQueryIndex+ (randSeed[0]++)))).NextFloat(-100f, 100f), 0, (new Unity.Mathematics.Random((uint)(entityInQueryIndex + (randSeed[1]++)))).NextFloat(-100f, 100f));
 
                     MeshData meshData = new MeshData();
 
-                    switch (caseArray[positionOnMaze])
+                    switch (thisCase)
                     {
                         // Straight cases
                         case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right:
@@ -354,11 +358,12 @@ public class MazeGeneratorSystem : SystemBase
                         numberOfTrisArray[entityInQueryIndex] = triangles.Length;
 
                     }
+                    toCreate.Value = false;
                 }
             }).ScheduleParallel();
             CompleteDependency();
 
-            caseArray.Dispose();
+            //caseArray.Dispose();
             //randSeed.Dispose();
 
             int numVerts = 0;
@@ -374,18 +379,15 @@ public class MazeGeneratorSystem : SystemBase
                 numTris += numberOfTrisArray[i];
             }
 
-
-
-
-
+            NativeArray<bool> meshUpdated = new NativeArray<bool>(1, Allocator.TempJob);
             NativeArray<Vector3> mazeVertices = new NativeArray<Vector3>(numVerts, Allocator.TempJob);
             NativeArray<int> mazeTriangles = new NativeArray<int>(numTris, Allocator.TempJob);
 
-
+            meshUpdated[0] = false;
             // Stitch together all meshes
-            Entities.ForEach((int entityInQueryIndex, DynamicBuffer<IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices) =>
+            Entities.ForEach((int entityInQueryIndex, DynamicBuffer<IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices, ref NeedsMeshUpdate needsMeshUpdate) =>
             {
-                if (mazeNeedsUpdate)
+                if (needsMeshUpdate.Value)
                 {
                     int cumulativeNumVerts = 0;
 
@@ -423,22 +425,25 @@ public class MazeGeneratorSystem : SystemBase
                             mazeTriangles[j] = Triangles[j - cumulativeNumTris].Value + cumulativeNumVerts;
                         }
                     }
+                    meshUpdated[0] = true;
+                    needsMeshUpdate.Value = false;
                 }
             }).Schedule();
 
             CompleteDependency();
-
-            if (mazeNeedsUpdate)
+            if (meshUpdated[0])
             {
-                UpdateMesh(mazeVertices.ToArray(), mazeTriangles.ToArray());
+                UpdateMesh(mazeVertices.ToArray(), mazeTriangles.ToArray(), singleton.numberOfMazes-1);
+                singleton.mazeNeedsUpdate = false;
             }
 
+            meshUpdated.Dispose();
             numberOfVertsArray.Dispose();
-
             numberOfTrisArray.Dispose();
 
             mazeVertices.Dispose();
             mazeTriangles.Dispose();
+
         }
     }
 }

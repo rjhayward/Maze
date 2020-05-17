@@ -8,8 +8,8 @@ public class PipeCases : MonoBehaviour
 
     public struct MeshData
     {
-        public float3[] vertices { get; set; }
-        public int[] triangles { get; set; }
+        public float3[] vertices;
+        public int[] triangles;
     }
     
     public enum PipeCase
