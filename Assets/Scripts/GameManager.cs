@@ -176,6 +176,70 @@ public class GameManager : MonoBehaviour
         //mazeEntities3.Dispose();
     }
 
+    void generateNewMaze(int[,] mazeArray2d)
+    {
+        PipeCases.PipeConnections[,] caseArray2d = PipeCases.GetCaseArray(mazeArray2d);
+
+        caseArray = new PipeCases.PipeConnections[256];
+
+        //int index = 0;
+        //for (int y = 0 + mazeIndex; y < 16 + mazeIndex; y++)
+        //{
+        //    for (int x = 0 + mazeIndex; x < 16 + mazeIndex; x++)
+        //    {
+        //        caseArray[index] = caseArray2d[x % 16, y % 16];
+        //        index++;
+        //    }
+        //}
+        int index = 0;
+        for (int y = 0; y < 16; y++)
+        {
+            for (int x = 0; x < 16; x++)
+            {
+                caseArray[index] = caseArray2d[x % 16, y % 16];
+                index++;
+            }
+        }
+
+        // max amount of mazeEntities (16*16 = 256)
+        NativeArray<Entity> mazeEntities = new NativeArray<Entity>(256, Allocator.Temp);
+
+        entityManager.CreateEntity(mazeArchetype, mazeEntities);
+
+        for (int i = 0; i < mazeEntities.Length; i++)
+        {
+            entityManager.SetComponentData(mazeEntities[i], new Translation
+            {
+                Value = new Vector3(0, 0, PipeCases.torusRadius * 32 * mazeIndex)
+            });
+
+            entityManager.SetComponentData(mazeEntities[i], new ToCreate
+            {
+                Value = true
+            });
+
+            entityManager.SetComponentData(mazeEntities[i], new NeedsMeshUpdate
+            {
+                Value = true
+            });
+
+            entityManager.AddBuffer<IntBufferElement>(mazeEntities[i]);
+
+            entityManager.AddBuffer<Float3BufferElement>(mazeEntities[i]);
+
+            entityManager.SetComponentData(mazeEntities[i], new PipeCaseComponent
+            {
+                Value = (int)caseArray[i]
+            });
+
+        }
+        mazeEntities.Dispose();
+        mazeIndex++;
+
+        singleton.numberOfMazes = mazeIndex;
+        singleton.mazeNeedsUpdate = true;
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -184,84 +248,25 @@ public class GameManager : MonoBehaviour
         {
             int[,] mazeArray2d = new int[,]
             {
-            {0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,0},
-            {0,1,0,0,0,1,0,0,0,0,0,1,0,1,1,1},
-            {0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0},
-            {0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0},
-            {0,0,0,1,0,0,1,0,0,0,1,1,1,1,1,0},
-            {0,1,1,1,1,1,1,0,0,0,0,0,1,0,1,1},
-            {0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0},
-            {2,1,1,1,1,1,1,0,1,0,1,1,1,1,1,2},
-            {0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0},
-            {1,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1},
-            {0,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1},
-            {0,0,0,1,0,1,0,1,1,1,1,1,1,1,0,1},
-            {0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,1},
-            {0,1,0,1,0,1,0,1,1,1,1,1,1,1,1,1},
-            {0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,0},
-            {0,1,1,1,1,1,1,1,1,1,0,1,0,1,1,1}
+                {0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,0},
+                {0,1,0,0,0,1,0,0,0,0,0,1,0,1,1,1},
+                {0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0},
+                {0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0},
+                {0,0,0,1,0,0,1,0,0,0,1,1,1,1,1,0},
+                {0,1,1,1,1,1,1,0,0,0,0,0,1,0,1,1},
+                {0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0},
+                {2,1,1,1,1,1,1,0,1,0,1,1,1,1,1,2},
+                {0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0},
+                {1,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1},
+                {0,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1},
+                {0,0,0,1,0,1,0,1,1,1,1,1,1,1,0,1},
+                {0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,1},
+                {0,1,0,1,0,1,0,1,1,1,1,1,1,1,1,1},
+                {0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,0},
+                {0,1,1,1,1,1,1,1,1,1,0,1,0,1,1,1}
             };
 
-            PipeCases.PipeConnections[,] caseArray2d = PipeCases.GetCaseArray(mazeArray2d);
-
-            caseArray = new PipeCases.PipeConnections[256];
-
-            //int index = 0;
-            //for (int y = 0 + mazeIndex; y < 16 + mazeIndex; y++)
-            //{
-            //    for (int x = 0 + mazeIndex; x < 16 + mazeIndex; x++)
-            //    {
-            //        caseArray[index] = caseArray2d[x % 16, y % 16];
-            //        index++;
-            //    }
-            //}
-            int index = 0;
-            for (int y = 0; y < 16; y++)
-            {
-                for (int x = 0; x < 16; x++)
-                {
-                    caseArray[index] = caseArray2d[x % 16, y % 16];
-                    index++;
-                }
-            }
-
-            // max amount of mazeEntities (16*16 = 256)
-            NativeArray<Entity> mazeEntities = new NativeArray<Entity>(256, Allocator.Temp);
-
-            entityManager.CreateEntity(mazeArchetype, mazeEntities);
-
-            for (int i = 0; i < mazeEntities.Length; i++)
-            {
-                entityManager.SetComponentData(mazeEntities[i], new Translation
-                {
-                    Value = new Vector3(0, 0, PipeCases.torusRadius * 32 * mazeIndex)
-                });
-
-                entityManager.SetComponentData(mazeEntities[i], new ToCreate
-                {
-                    Value = true
-                });
-
-                entityManager.SetComponentData(mazeEntities[i], new NeedsMeshUpdate
-                {
-                    Value = true
-                });
-
-                entityManager.AddBuffer<IntBufferElement>(mazeEntities[i]);
-
-                entityManager.AddBuffer<Float3BufferElement>(mazeEntities[i]);
-
-                entityManager.SetComponentData(mazeEntities[i], new PipeCaseComponent
-                {
-                    Value = (int)caseArray[i]
-                });
-
-            }
-            mazeEntities.Dispose();
-            mazeIndex++;
-
-            singleton.numberOfMazes = mazeIndex;
-            singleton.mazeNeedsUpdate = true;
+            generateNewMaze(mazeArray2d);
         }
 
     }
