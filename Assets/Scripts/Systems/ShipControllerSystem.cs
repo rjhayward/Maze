@@ -11,8 +11,17 @@ using Unity.Mathematics;
 
 public class ShipControllerSystem : SystemBase
 {
+    Singleton singleton;
+
+    protected override void OnStartRunning()
+    {
+        singleton = GameObject.Find("Singleton").GetComponent<Singleton>();
+    }
+
     protected override void OnUpdate()
     {
+
+
         float deltaTime = Time.DeltaTime;
 
         // TODO simplify using unity's input
@@ -24,21 +33,21 @@ public class ShipControllerSystem : SystemBase
         // apply rotation to all ships based on user input
         Entities.ForEach((ref Rotation rotation, in IsShip isShip) =>
         {
-            //if (isDownPressed)
-            //{
-            //    rotation.Value *= Quaternion.Euler(new Vector3(-0.4f, 0f, 0f));
-            //}
-            //if (isUpPressed)
-            //{
-            //    rotation.Value *= Quaternion.Euler(new Vector3(0.4f, 0f, 0f));
-            //}
+            if (isDownPressed)
+            {
+                rotation.Value *= Quaternion.Euler(new Vector3(-0.04f, 0f, 0f));
+            }
+            if (isUpPressed)
+            {
+                rotation.Value *= Quaternion.Euler(new Vector3(0.04f, 0f, 0f));
+            }
             if (isLeftPressed)
             {
-                rotation.Value *= Quaternion.Euler(new Vector3(0f, -0.4f, 0f));
+                rotation.Value *= Quaternion.Euler(new Vector3(0f, 0f, 0.03f));
             }
             if (isRightPressed)
             {
-                rotation.Value *= Quaternion.Euler(new Vector3(0f, 0.4f, 0f));
+                rotation.Value *= Quaternion.Euler(new Vector3(0f, 0f, -0.03f));
             }
         }).ScheduleParallel();
 
@@ -60,6 +69,11 @@ public class ShipControllerSystem : SystemBase
         CompleteDependency();
 
         Vector3 shipPos = shipTranslation[0].Value;
+
+        if (shipPos.z > PipeCases.torusRadius * 32 * (singleton.mazeIndex-1))
+        {
+            singleton.toAddNewMaze = true;
+        }
 
         Vector3 shipDir = shipDirection[0];
 
