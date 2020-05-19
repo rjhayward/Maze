@@ -16,7 +16,7 @@ using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Entities.UniversalDelegates;
 
 using static PipeCases;
-using Packages.Rider.Editor;
+using System.Threading;
 
 public class MazeGeneratorSystem : SystemBase
 {
@@ -44,6 +44,13 @@ public class MazeGeneratorSystem : SystemBase
 
     Singleton singleton;
     GameObject parentMaze;
+    //PipeCases pipeCasesField;
+    public static NativeArray<MeshDataNative> meshDataArray;
+
+    [ReadOnly]
+    public static NativeMultiHashMap<int, float3> VertexHashMap;
+    [ReadOnly]
+    public static NativeMultiHashMap<int, int> TriangleHashMap;
     protected override void OnCreate()
     {
 
@@ -72,105 +79,161 @@ public class MazeGeneratorSystem : SystemBase
 
     protected override void OnStartRunning()
     {
-
         parentMaze = GameObject.Find("Maze");
 
-
         singleton = GameObject.Find("Singleton").GetComponent<Singleton>();
+
+        //pipeCasesField = GameObject.Find("Singleton").GetComponent<PipeCases>();
+
+        //VertexHashMap = new NativeMultiHashMap<int, float3[]>(16, Allocator.Persistent);
+
+        //VertexHashMap.Add(0, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.Straight, 0).vertices.ToArray);
+        //VertexHashMap.Add(1, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.Straight, 90).vertices);
+
+        //VertexHashMap.Add(2, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.L, 0).vertices);
+        //VertexHashMap.Add(3, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.L, 90).vertices);
+        //VertexHashMap.Add(4, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.L, 180).vertices);
+        //VertexHashMap.Add(5, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.L, 270).vertices);
+
+        //VertexHashMap.Add(6, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.T, 0).vertices);
+        //VertexHashMap.Add(7, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.T, 90).vertices);
+        //VertexHashMap.Add(8, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.T, 180).vertices);
+        //VertexHashMap.Add(9, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.T, 270).vertices);
+
+        //VertexHashMap.Add(10, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.DeadEnd, 0).vertices);
+        //VertexHashMap.Add(11, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.DeadEnd, 90).vertices);
+        //VertexHashMap.Add(12, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.DeadEnd, 180).vertices);
+        //VertexHashMap.Add(13, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.DeadEnd, 270).vertices);
+
+        //VertexHashMap.Add(14, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.Cross, 0).vertices);
+        //VertexHashMap.Add(15, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.Cross, 0).vertices);
+
+
+        //TriangleHashMap = new NativeMultiHashMap<int, NativeArray<int>>(16,Allocator.Persistent);
+
+
+        //TriangleHashMap.Add(0, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.Straight, 0).triangles);
+        //TriangleHashMap.Add(1, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.Straight, 90).triangles);
+
+        //TriangleHashMap.Add(2, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.L, 0).triangles);
+        //TriangleHashMap.Add(3, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.L, 90).triangles);
+        //TriangleHashMap.Add(4, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.L, 180).triangles);
+        //TriangleHashMap.Add(5, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.L, 270).triangles);
+
+        //TriangleHashMap.Add(6, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.T, 0).triangles);
+        //TriangleHashMap.Add(7, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.T, 90).triangles);
+        //TriangleHashMap.Add(8, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.T, 180).triangles);
+        //TriangleHashMap.Add(9, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.T, 270).triangles);
+
+        //TriangleHashMap.Add(10, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.DeadEnd, 0).triangles);
+        //TriangleHashMap.Add(11, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.DeadEnd, 90).triangles);
+        //TriangleHashMap.Add(12, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.DeadEnd, 180).triangles);
+        //TriangleHashMap.Add(13, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.DeadEnd, 270).triangles);
+
+        //TriangleHashMap.Add(14, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.Cross, 0).triangles);
+        //TriangleHashMap.Add(15, pipeCasesField.GetRotatedMeshDataByCase(PipeCase.Cross, 0).triangles);
+
     }
 
-    // TODO move outside this class, we will use it to pass a 1dCaseArray into the entity and that is all, the entity will not use the raw seed
-    public static int[,] Get2dArrayFromSeed(string seed)
+
+    protected override void OnDestroy()
     {
-        seed = "VGjlIHF16WPrIGJyb3duIFRoZSBxdWljayBicm93biA=";
-        byte[] binaryFromSeed = Convert.FromBase64String(seed);
-
-        int[] binary16FromSeed = new int[16];
-
-        int[,] outArray = new int[16, 16];
-
-        //for (int i = 0; i < binary16FromSeed.Length; i++)
-        //{
-        //    if (i > 0)
-        //    {
-        //        binary16FromSeed[i] = binaryFromSeed[2* i - 1] + binaryFromSeed[2 * i - 2];
-        //    }
-        //}
-
-        // TODO combine array of 0b11111111, 0b11111111 into array of 0b1111111111111111
-
-        for (int lineIndex = 0; lineIndex < binary16FromSeed.Length; lineIndex++)
-        {
-            //Debug.LogError(binaryFromSeed[lineIndex].ToString());
-
-            for (int i = 0; i < 16; i++) // for each bit in 2 bytes
-            {
-                //if (lineIndex == 0) Debug.LogError((uint)binaryFromSeed[lineIndex] >> i);
-
-                uint logicallyRightShifted = (uint)binaryFromSeed[lineIndex] >> i;
-
-                if (logicallyRightShifted % 2 == 0) // check if the number represented by the binary (shifted i times) is even (check there is a 0 at the end)
-                {
-                    outArray[i, lineIndex] = 0;
-                }
-                else
-                {
-                    outArray[i, lineIndex] = 1;
-                }
-            }
-        }
-        //outArray = new int[,]
-        //{
-        //    {0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,0},
-        //    { 0,1,0,0,0,1,0,0,0,0,0,1,0,1,1,1},
-        //    { 0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0},
-        //    { 0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0},
-        //    { 0,0,0,1,0,0,1,0,0,0,1,1,1,1,1,0},
-        //    { 0,1,1,1,1,1,1,0,0,0,0,0,1,0,1,1},
-        //    { 0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0},
-        //    { 2,1,1,1,1,1,1,0,1,0,1,1,1,1,1,2},
-        //    { 0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0},
-        //    { 1,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1},
-        //    { 0,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1},
-        //    { 0,0,0,1,0,1,0,1,1,1,1,1,1,1,0,1},
-        //    { 0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,1},
-        //    { 0,1,0,1,0,1,0,1,1,1,1,1,1,1,1,1},
-        //    { 0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,0},
-        //    { 0,1,1,1,1,1,1,1,1,1,0,1,0,1,1,1}
-        //};
-
-        string s = "";
-
-        for (int i = 0; i < 16; i++)
-        {
-            s += outArray[0, i];
-            
-        }
-        Debug.LogError(s);
-        return outArray;
-        //return new int[,]
-        //{
-        //    {0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,0},
-        //    {0,1,0,0,0,1,0,0,0,0,0,1,0,1,1,1},
-        //    {0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0},
-        //    {0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0},
-        //    {0,0,0,1,0,0,1,0,0,0,1,1,1,1,1,0},
-        //    {0,1,1,1,1,1,1,0,0,0,0,0,1,0,1,1},
-        //    {0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0},
-        //    {2,1,1,1,1,1,1,0,1,0,1,1,1,1,1,2},
-        //    {0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0},
-        //    {1,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1},
-        //    {0,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1},
-        //    {0,0,0,1,0,1,0,1,1,1,1,1,1,1,0,1},
-        //    {0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,1},
-        //    {0,1,0,1,0,1,0,1,1,1,1,1,1,1,1,1},
-        //    {0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,0},
-        //    {0,1,1,1,1,1,1,1,1,1,0,1,0,1,1,1}
-        //};
+        meshDataArray.Dispose();
     }
+
+
+    //// TODO move outside this class, we will use it to pass a 1dCaseArray into the entity and that is all, the entity will not use the raw seed
+    //public static int[,] Get2dArrayFromSeed(string seed)
+    //{
+    //    seed = "VGjlIHF16WPrIGJyb3duIFRoZSBxdWljayBicm93biA=";
+    //    byte[] binaryFromSeed = Convert.FromBase64String(seed);
+
+    //    int[] binary16FromSeed = new int[16];
+
+    //    int[,] outArray = new int[16, 16];
+
+    //    //for (int i = 0; i < binary16FromSeed.Length; i++)
+    //    //{
+    //    //    if (i > 0)
+    //    //    {
+    //    //        binary16FromSeed[i] = binaryFromSeed[2* i - 1] + binaryFromSeed[2 * i - 2];
+    //    //    }
+    //    //}
+
+    //    // TODO combine array of 0b11111111, 0b11111111 into array of 0b1111111111111111
+
+    //    for (int lineIndex = 0; lineIndex < binary16FromSeed.Length; lineIndex++)
+    //    {
+    //        //Debug.LogError(binaryFromSeed[lineIndex].ToString());
+
+    //        for (int i = 0; i < 16; i++) // for each bit in 2 bytes
+    //        {
+    //            //if (lineIndex == 0) Debug.LogError((uint)binaryFromSeed[lineIndex] >> i);
+
+    //            uint logicallyRightShifted = (uint)binaryFromSeed[lineIndex] >> i;
+
+    //            if (logicallyRightShifted % 2 == 0) // check if the number represented by the binary (shifted i times) is even (check there is a 0 at the end)
+    //            {
+    //                outArray[i, lineIndex] = 0;
+    //            }
+    //            else
+    //            {
+    //                outArray[i, lineIndex] = 1;
+    //            }
+    //        }
+    //    }
+    //    //outArray = new int[,]
+    //    //{
+    //    //    {0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,0},
+    //    //    { 0,1,0,0,0,1,0,0,0,0,0,1,0,1,1,1},
+    //    //    { 0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0},
+    //    //    { 0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0},
+    //    //    { 0,0,0,1,0,0,1,0,0,0,1,1,1,1,1,0},
+    //    //    { 0,1,1,1,1,1,1,0,0,0,0,0,1,0,1,1},
+    //    //    { 0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0},
+    //    //    { 2,1,1,1,1,1,1,0,1,0,1,1,1,1,1,2},
+    //    //    { 0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0},
+    //    //    { 1,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1},
+    //    //    { 0,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1},
+    //    //    { 0,0,0,1,0,1,0,1,1,1,1,1,1,1,0,1},
+    //    //    { 0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,1},
+    //    //    { 0,1,0,1,0,1,0,1,1,1,1,1,1,1,1,1},
+    //    //    { 0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,0},
+    //    //    { 0,1,1,1,1,1,1,1,1,1,0,1,0,1,1,1}
+    //    //};
+
+    //    string s = "";
+
+    //    for (int i = 0; i < 16; i++)
+    //    {
+    //        s += outArray[0, i];
+            
+    //    }
+    //    Debug.LogError(s);
+    //    return outArray;
+    //    //return new int[,]
+    //    //{
+    //    //    {0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,0},
+    //    //    {0,1,0,0,0,1,0,0,0,0,0,1,0,1,1,1},
+    //    //    {0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0},
+    //    //    {0,1,0,1,0,0,1,0,0,0,1,0,0,1,0,0},
+    //    //    {0,0,0,1,0,0,1,0,0,0,1,1,1,1,1,0},
+    //    //    {0,1,1,1,1,1,1,0,0,0,0,0,1,0,1,1},
+    //    //    {0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0},
+    //    //    {2,1,1,1,1,1,1,0,1,0,1,1,1,1,1,2},
+    //    //    {0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0},
+    //    //    {1,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1},
+    //    //    {0,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1},
+    //    //    {0,0,0,1,0,1,0,1,1,1,1,1,1,1,0,1},
+    //    //    {0,1,1,1,0,1,1,1,0,0,0,1,0,0,0,1},
+    //    //    {0,1,0,1,0,1,0,1,1,1,1,1,1,1,1,1},
+    //    //    {0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,0},
+    //    //    {0,1,1,1,1,1,1,1,1,1,0,1,0,1,1,1}
+    //    //};
+    //}
 
     //Update mesh code
-    void UpdateMesh(Vector3[] mazeVertices, int[] mazeTriangles, int meshIndex) // TODO add one mesh per maze
+    void UpdateMesh(Vector3[] mazeVertices, int[] mazeTriangles, int meshIndex)
     {
         Maze newMaze = GameObject.Instantiate<Maze>(singleton.mazePrefab);
         newMaze.transform.parent = parentMaze.transform;
@@ -191,12 +254,17 @@ public class MazeGeneratorSystem : SystemBase
 
         bool mazeNeedsUpdate = singleton.mazeNeedsUpdate;// Input.GetKeyDown(KeyCode.Space);
 
+        
         if (mazeNeedsUpdate)
         {
+           
             //size of array is maximum possible size of maze (256 tubes)
             NativeArray<int> numberOfVertsArray = new NativeArray<int>(256 * singleton.numberOfMazes, Allocator.TempJob);
             NativeArray<int> numberOfTrisArray = new NativeArray<int>(256 * singleton.numberOfMazes, Allocator.TempJob);
 
+            //NativeMultiHashMap<int, NativeArray<float3>> VertexHashMap = VertexHashMapField;
+
+            //NativeMultiHashMap<int, NativeArray<int>> TriangleHashMap = TriangleHashMapField;
             //// change 1s to 0s on maze update
             //for (int y = 0; y < 16; y++)
             //{
@@ -216,9 +284,7 @@ public class MazeGeneratorSystem : SystemBase
 
             //NativeArray<PipeConnections> caseArray = new NativeArray<PipeConnections>(256, Allocator.TempJob);
 
-            
-            // TODO add new buffer to contain the actual preconverted case array "ref DynamicBuffer<CaseArrayElement> caseArray"
-            // TODO add bool mazeNeedsUpdate as a component that we can set outside and then reset to false once the Update is completed.
+
             // assigns mesh data to each entity
             Entities.ForEach((Entity entity, int entityInQueryIndex, DynamicBuffer<IntBufferElement> Triangles, DynamicBuffer<Float3BufferElement> Vertices,
                 ref Translation translation, ref PipeCaseComponent pipeCaseComponent, ref ToCreate toCreate) =>
@@ -231,134 +297,168 @@ public class MazeGeneratorSystem : SystemBase
 
                     //if (toCreate.Value)
                     //{
-                        float3 newTranslation = new float3(0f, 0f, 0f);
+                    float3 newTranslation = new float3(0f, 0f, 0f);
 
-                        newTranslation.x = squareSize * (positionOnMaze % 16);
-                        newTranslation.y = 0f;
-                        newTranslation.z = squareSize * (positionOnMaze / 16);
+                    newTranslation.x = squareSize * (positionOnMaze % 16);
+                    newTranslation.y = 0f;
+                    newTranslation.z = squareSize * (positionOnMaze / 16);
 
-                        translation.Value += newTranslation;
+                    translation.Value += newTranslation;
 
                     //}
                     // translation.Value *= squareSize; //new Vector3((new Unity.Mathematics.Random((uint)(entityInQueryIndex+ (randSeed[0]++)))).NextFloat(-100f, 100f), 0, (new Unity.Mathematics.Random((uint)(entityInQueryIndex + (randSeed[1]++)))).NextFloat(-100f, 100f));
 
-                    MeshData meshData = new MeshData();
+                    //NativeArray<float3> vertices = new NativeArray<float3>(0, Allocator.TempJob);
+                    //NativeArray<int> triangles = new NativeArray<int>(0, Allocator.TempJob);
 
-                    switch (thisCase)
+                    //switch (thisCase)
+                    //{
+                    //    // Straight cases
+                    //    case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.Straight, 0);
+                    //        //meshData = meshDataArray[0];
+                    //        vertices = VertexHashMap.GetValuesForKey(0).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(0).Current;
+                    //        break;
+                    //    case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.Straight, 90);
+                    //        //meshData = meshDataArray[1];
+                    //        vertices = VertexHashMap.GetValuesForKey(1).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(1).Current;
+                    //        break;
+                    //    // L cases
+                    //    case PipeConnections.Exists | PipeConnections.Down | PipeConnections.Right:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.L, 0);
+                    //        vertices = VertexHashMap.GetValuesForKey(2).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(2).Current;
+                    //        break;
+                    //    case PipeConnections.Exists | PipeConnections.Down | PipeConnections.Left:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.L, 90);
+                    //        vertices = VertexHashMap.GetValuesForKey(3).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(3).Current;
+                    //        break;
+                    //    case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Left:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.L, 180);
+                    //        vertices = VertexHashMap.GetValuesForKey(4).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(4).Current;
+                    //        break;
+                    //    case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Right:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.L, 270);
+                    //        vertices = VertexHashMap.GetValuesForKey(5).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(5).Current;
+                    //        break;
+                    //    // T cases
+                    //    case PipeConnections.Exists | PipeConnections.Down | PipeConnections.Up | PipeConnections.Right:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.T, 0);
+                    //        vertices = VertexHashMap.GetValuesForKey(6).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(6).Current;
+                    //        break;
+                    //    case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right | PipeConnections.Down:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.T, 90);
+                    //        vertices = VertexHashMap.GetValuesForKey(7).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(7).Current;
+                    //        break;
+                    //    case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down | PipeConnections.Left:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.T, 180);
+                    //        vertices = VertexHashMap.GetValuesForKey(8).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(8).Current;
+                    //        break;
+                    //    case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right | PipeConnections.Up:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.T, 270);
+                    //        vertices = VertexHashMap.GetValuesForKey(9).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(9).Current;
+                    //        break;
+                    //    // DeadEnd cases
+                    //    case PipeConnections.Exists | PipeConnections.Left:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.DeadEnd, 0);
+                    //        vertices = VertexHashMap.GetValuesForKey(10).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(10).Current;
+                    //        break;
+                    //    case PipeConnections.Exists | PipeConnections.Up:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.DeadEnd, 90);
+                    //        vertices = VertexHashMap.GetValuesForKey(11).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(11).Current;
+                    //        break;
+                    //    case PipeConnections.Exists | PipeConnections.Right:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.DeadEnd, 180);
+                    //        vertices = VertexHashMap.GetValuesForKey(12).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(12).Current;
+                    //        break;
+                    //    case PipeConnections.Exists | PipeConnections.Down:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.DeadEnd, 270);
+                    //        vertices = VertexHashMap.GetValuesForKey(13).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(13).Current;
+                    //        break;
+                    //    // Cross case
+                    //    case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down | PipeConnections.Left | PipeConnections.Right:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.Cross, 0);
+                    //        vertices = VertexHashMap.GetValuesForKey(14).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(14).Current;
+                    //        break;
+                    //    //exit case
+                    //    case PipeConnections.Exists:
+                    //        //meshData = pipeCases.GetRotatedMeshDataByCase(PipeCase.Cross, 0);
+                    //        vertices = VertexHashMap.GetValuesForKey(15).Current;
+                    //        triangles = TriangleHashMap.GetValuesForKey(15).Current;
+                    //        break;
+
+                    //theoretically the program should not reach this
+                    //default:
+                    //    meshData = GetRotatedMeshDataByCase(PipeCase.Cross, 0);
+                    //    break;
+
+                    //}
+                    //if (Vertices[0].Value != null)
+                    //{
+                    ////populate vertex buffer with empty vertices
+                    //if (Vertices.Length < vertices.Length)
+                    //{
+                    //    for (int j = 0; j < vertices.Length; j++)
+                    //    {
+                    //        if (Vertices.Length < vertices.Length)
+                    //        {
+                    //            Vertices.Add(new Float3BufferElement { Value = new float3(0f, 0f, 1f) });
+                    //        }
+                    //    }
+                    //}
+
+                    //Translate vertices
+                    for (int i = 0; i < Vertices.Length; i++)
                     {
-                        // Straight cases
-                        case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.Straight, 0);
-                            break;
-                        case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.Straight, 90);
-                            break;
-                        // L cases
-                        case PipeConnections.Exists | PipeConnections.Down | PipeConnections.Right:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.L, 0);
-                            break;
-                        case PipeConnections.Exists | PipeConnections.Down | PipeConnections.Left:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.L, 90);
-                            break;
-                        case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Left:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.L, 180);
-                            break;
-                        case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Right:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.L, 270);
-                            break;
-                        // T cases
-                        case PipeConnections.Exists | PipeConnections.Down | PipeConnections.Up | PipeConnections.Right:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.T, 0);
-                            break;
-                        case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right | PipeConnections.Down:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.T, 90);
-                            break;
-                        case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down | PipeConnections.Left:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.T, 180);
-                            break;
-                        case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right | PipeConnections.Up:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.T, 270);
-                            break;
-                        // DeadEnd cases
-                        case PipeConnections.Exists | PipeConnections.Left:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 0);
-                            break;
-                        case PipeConnections.Exists | PipeConnections.Up:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 90);
-                            break;
-                        case PipeConnections.Exists | PipeConnections.Right:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 180);
-                            break;
-                        case PipeConnections.Exists | PipeConnections.Down:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 270);
-                            break;
-                        // Cross case
-                        case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down | PipeConnections.Left | PipeConnections.Right:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.Cross, 0);
-                            break;
-                        //exit case
-                        case PipeConnections.Exists:
-                            meshData = GetRotatedMeshDataByCase(PipeCase.Cross, 0);
-                            break;
-
-                        //theoretically the program should not reach this
-                        //default:
-                        //    meshData = GetRotatedMeshDataByCase(PipeCase.Cross, 0);
-                        //    break;
-
+                        var vertex = Vertices[i];
+                        vertex.Value += translation.Value;
+                        Vertices[i] = vertex;
+                        numberOfVertsArray[entityInQueryIndex]++;
                     }
-                    if (meshData.vertices != null)
-                    {
 
-                        float3[] vertices = meshData.vertices;
-                        int[] triangles = meshData.triangles;
+                    ////populate triangles buffer with empty triangles
+                    //if (Triangles.Length < triangles.Length)
+                    //{
+                    //    for (int j = 0; j < triangles.Length; j++)
+                    //    {
+                    //        if (Triangles.Length < triangles.Length)
+                    //        {
+                    //            Triangles.Add(new IntBufferElement { Value = 0 });
+                    //        }
+                    //    }
+                    //}
+                    ////fill in triangles
+                    //for (int i = 0; i < triangles.Length; i++)
+                    //{
+                    //    var triangle = Triangles[i];
+                    //    triangle.Value = triangles[i];
+                    //    Triangles[i] = triangle;
+                    //}
+
+                    //export the number of verts/tris to outside the job
+                    numberOfVertsArray[entityInQueryIndex] = Vertices.Length;
+                    numberOfTrisArray[entityInQueryIndex] = Triangles.Length;
 
 
-                        //populate vertex buffer with empty vertices
-                        if (Vertices.Length < vertices.Length)
-                        {
-                            for (int j = 0; j < vertices.Length; j++)
-                            {
-                                if (Vertices.Length < vertices.Length)
-                                {
-                                    Vertices.Add(new Float3BufferElement { Value = new float3(0f, 0f, 1f) });
-                                }
-                            }
-                        }
-                        //fill in vertices
-                        for (int i = 0; i < vertices.Length; i++)
-                        {
-                            var vertex = Vertices[i];
-                            vertex.Value = vertices[i] + translation.Value;
-                            Vertices[i] = vertex;
-                            numberOfVertsArray[entityInQueryIndex]++;
-                        }
-
-                        //populate triangles buffer with empty triangles
-                        if (Triangles.Length < triangles.Length)
-                        {
-                            for (int j = 0; j < triangles.Length; j++)
-                            {
-                                if (Triangles.Length < triangles.Length)
-                                {
-                                    Triangles.Add(new IntBufferElement { Value = 0 });
-                                }
-                            }
-                        }
-                        //fill in triangles
-                        for (int i = 0; i < triangles.Length; i++)
-                        {
-                            var triangle = Triangles[i];
-                            triangle.Value = triangles[i];
-                            Triangles[i] = triangle;
-                        }
-
-                        //export the number of verts/tris to outside the job
-                        numberOfVertsArray[entityInQueryIndex] = vertices.Length;
-                        numberOfTrisArray[entityInQueryIndex] = triangles.Length;
-
-                    }
                     toCreate.Value = false;
+
+                    //vertices.Dispose();
+                    //triangles.Dispose();
                 }
             }).ScheduleParallel();
             CompleteDependency();
@@ -429,8 +529,8 @@ public class MazeGeneratorSystem : SystemBase
                     needsMeshUpdate.Value = false;
                 }
             }).Schedule();
-
             CompleteDependency();
+
             if (meshUpdated[0])
             {
                 UpdateMesh(mazeVertices.ToArray(), mazeTriangles.ToArray(), singleton.numberOfMazes-1);
@@ -447,7 +547,6 @@ public class MazeGeneratorSystem : SystemBase
         }
     }
 }
-
 
 // Code for generating random numbers inside job
 //NativeArray<int> randSeed = new NativeArray<int>(1, Allocator.TempJob);

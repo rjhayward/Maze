@@ -11,8 +11,17 @@ public class Singleton : MonoBehaviour
 
     [HideInInspector]
     public bool mazeNeedsUpdate;
+
+    [HideInInspector]
+    public bool toAddNewMaze;
+
+    [HideInInspector]
+    public int mazeIndex;
+
+
     void Start()
     {
+        mazeIndex = 0;
         numberOfMazes = 0;
     }
 }
