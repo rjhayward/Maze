@@ -1,17 +1,9 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using Unity.Collections;
+﻿using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
 public class PipeCases : MonoBehaviour
 {
-
-    public struct MeshDataNative
-    {
-        public NativeArray<float3> vertices;
-        public NativeArray<int> triangles;
-    }
 
     public struct MeshData
     {
@@ -38,42 +30,44 @@ public class PipeCases : MonoBehaviour
         Right = 4,
         Down = 8,
         Left = 16,
-        End = 32
+        End = 32,
+        StartOfMaze = 64
     }
 
     public static readonly float torusRadius = 10f;
-    public static readonly float pipeRadius = 5f;
+    public static readonly float pipeRadius = 7f;
     public static readonly int pipeSegments = 17;
     public static readonly int torusSegments = 17;
     public static readonly float squareSize = 2 * torusRadius;// math.sqrt(2 * math.pow(torusRadius,2)) + pipeRadius;
 
-    public NativeArray<float3> meshDataCrossCaseVerts;
-    public NativeArray<int> meshDataCrossCaseTris;
+    public float3[] meshDataCrossCaseVerts;
+    public int[] meshDataCrossCaseTris;
 
-    public NativeArray<float3> meshDataTCaseVerts;
-    public NativeArray<int> meshDataTCaseTris;
+    public float3[] meshDataTCaseVerts;
+    public int[] meshDataTCaseTris;
 
-    public NativeArray<float3> meshDataLCaseVerts;
-    public NativeArray<int> meshDataLCaseTris;
+    public float3[] meshDataLCaseVerts;
+    public int[] meshDataLCaseTris;
 
-    public NativeArray<float3> meshDataStraightCaseVerts;
-    public NativeArray<int> meshDataStraightCaseTris;
+    public float3[] meshDataStraightCaseVerts;
+    public int[] meshDataStraightCaseTris;
 
-    public NativeArray<float3> meshDataDeadEndCaseVerts;
-    public NativeArray<int> meshDataDeadEndCaseTris;
+    public float3[] meshDataDeadEndCaseVerts;
+    public int[] meshDataDeadEndCaseTris;
 
 
     // Start is called before the first frame update
     void Start()
     {
+        // fill up our pool of meshData at the beginning of the game 
         MeshData meshDataCrossCase = GetCrossMeshData();
-        meshDataCrossCaseVerts = new NativeArray<float3>(meshDataCrossCase.vertices.Length, Allocator.Persistent);
+        meshDataCrossCaseVerts = new float3[meshDataCrossCase.vertices.Length];
         for (int i = 0; i < meshDataCrossCase.vertices.Length; i++)
         {
             meshDataCrossCaseVerts[i] = meshDataCrossCase.vertices[i];
 
         }
-        meshDataCrossCaseTris = new NativeArray<int>(meshDataCrossCase.triangles.Length, Allocator.Persistent);
+        meshDataCrossCaseTris = new int[meshDataCrossCase.triangles.Length];
         for (int i = 0; i < meshDataCrossCase.triangles.Length; i++)
         {
             meshDataCrossCaseTris[i] = meshDataCrossCase.triangles[i];
@@ -81,13 +75,13 @@ public class PipeCases : MonoBehaviour
         }
 
         MeshData meshDataTCase = GetTMeshData();
-        meshDataTCaseVerts = new NativeArray<float3>(meshDataTCase.vertices.Length, Allocator.Persistent);
+        meshDataTCaseVerts = new float3[meshDataTCase.vertices.Length];
         for (int i = 0; i < meshDataTCase.vertices.Length; i++)
         {
             meshDataTCaseVerts[i] = meshDataTCase.vertices[i];
 
         }
-        meshDataTCaseTris = new NativeArray<int>(meshDataTCase.triangles.Length, Allocator.Persistent);
+        meshDataTCaseTris = new int[meshDataTCase.triangles.Length];
         for (int i = 0; i < meshDataTCase.triangles.Length; i++)
         {
             meshDataTCaseTris[i] = meshDataTCase.triangles[i];
@@ -95,13 +89,13 @@ public class PipeCases : MonoBehaviour
         }
 
         MeshData meshDataLCase = GetLMeshData();
-        meshDataLCaseVerts = new NativeArray<float3>(meshDataLCase.vertices.Length, Allocator.Persistent);
+        meshDataLCaseVerts = new float3[meshDataLCase.vertices.Length];
         for (int i = 0; i < meshDataLCase.vertices.Length; i++)
         {
             meshDataLCaseVerts[i] = meshDataLCase.vertices[i];
 
         }
-        meshDataLCaseTris = new NativeArray<int>(meshDataLCase.triangles.Length, Allocator.Persistent);
+        meshDataLCaseTris = new int[meshDataLCase.triangles.Length];
         for (int i = 0; i < meshDataLCase.triangles.Length; i++)
         {
             meshDataLCaseTris[i] = meshDataLCase.triangles[i];
@@ -109,13 +103,13 @@ public class PipeCases : MonoBehaviour
         }
 
         MeshData meshDataStraightCase = GetStraightMeshData();
-        meshDataStraightCaseVerts = new NativeArray<float3>(meshDataStraightCase.vertices.Length, Allocator.Persistent);
+        meshDataStraightCaseVerts = new float3[meshDataStraightCase.vertices.Length];
         for (int i = 0; i < meshDataStraightCase.vertices.Length; i++)
         {
             meshDataStraightCaseVerts[i] = meshDataStraightCase.vertices[i];
 
         }
-        meshDataStraightCaseTris = new NativeArray<int>(meshDataStraightCase.triangles.Length, Allocator.Persistent);
+        meshDataStraightCaseTris = new int[meshDataStraightCase.triangles.Length];
         for (int i = 0; i < meshDataStraightCase.triangles.Length; i++)
         {
             meshDataStraightCaseTris[i] = meshDataStraightCase.triangles[i];
@@ -123,38 +117,118 @@ public class PipeCases : MonoBehaviour
         }
 
         MeshData meshDataDeadEndCase = GetDeadEndMeshData();
-        meshDataDeadEndCaseVerts = new NativeArray<float3>(meshDataDeadEndCase.vertices.Length, Allocator.Persistent);
+        meshDataDeadEndCaseVerts = new float3[meshDataDeadEndCase.vertices.Length];
         for (int i = 0; i < meshDataDeadEndCase.vertices.Length; i++)
         {
             meshDataDeadEndCaseVerts[i] = meshDataDeadEndCase.vertices[i];
 
         }
-        meshDataDeadEndCaseTris = new NativeArray<int>(meshDataDeadEndCase.triangles.Length, Allocator.Persistent);
+        meshDataDeadEndCaseTris = new int[meshDataDeadEndCase.triangles.Length];
         for (int i = 0; i < meshDataDeadEndCase.triangles.Length; i++)
         {
             meshDataDeadEndCaseTris[i] = meshDataDeadEndCase.triangles[i];
+        }
+    }
+
+    public MeshData GetMeshDataByCase(PipeConnections pipeCase)
+    {
+        float3[] vertices;
+        int[] triangles;
+        switch (pipeCase)
+        {
+            // Straight cases
+            case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right:
+                vertices = GetRotatedMeshDataByCase(PipeCase.Straight, 0).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.Straight, 0).triangles;
+                break;
+            case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down:
+                vertices = GetRotatedMeshDataByCase(PipeCase.Straight, 90).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.Straight, 90).triangles;
+                break;
+
+            // L cases
+            case PipeConnections.Exists | PipeConnections.Down | PipeConnections.Right:
+                vertices = GetRotatedMeshDataByCase(PipeCase.L, 0).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.L, 0).triangles;
+                break;
+            case PipeConnections.Exists | PipeConnections.Down | PipeConnections.Left:
+                vertices = GetRotatedMeshDataByCase(PipeCase.L, 90).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.L, 90).triangles;
+                break;
+            case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Left:
+                vertices = GetRotatedMeshDataByCase(PipeCase.L, 180).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.L, 180).triangles;
+                break;
+            case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Right:
+                vertices = GetRotatedMeshDataByCase(PipeCase.L, 270).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.L, 270).triangles;
+                break;
+
+            // T cases
+            case PipeConnections.Exists | PipeConnections.Down | PipeConnections.Up | PipeConnections.Right:
+                vertices = GetRotatedMeshDataByCase(PipeCase.T, 0).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.T, 0).triangles;
+                break;
+            case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right | PipeConnections.Down:
+                vertices = GetRotatedMeshDataByCase(PipeCase.T, 90).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.T, 90).triangles;
+                break;
+            case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down | PipeConnections.Left:
+                vertices = GetRotatedMeshDataByCase(PipeCase.T, 180).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.T, 180).triangles;
+                break;
+            case PipeConnections.Exists | PipeConnections.Left | PipeConnections.Right | PipeConnections.Up:
+                vertices = GetRotatedMeshDataByCase(PipeCase.T, 270).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.T, 270).triangles;
+                break;
+
+            // DeadEnd cases
+            case PipeConnections.Exists | PipeConnections.Left:
+                vertices = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 0).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 0).triangles;
+                break;
+            case PipeConnections.Exists | PipeConnections.Up:
+                vertices = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 90).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 90).triangles;
+                break;
+            case PipeConnections.Exists | PipeConnections.Right:
+                vertices = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 180).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 180).triangles;
+                break;
+            case PipeConnections.Exists | PipeConnections.Down:
+                vertices = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 270).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 270).triangles;
+                break;
+
+            // Cross case
+            case PipeConnections.Exists | PipeConnections.Up | PipeConnections.Down | PipeConnections.Left | PipeConnections.Right:
+                vertices = GetRotatedMeshDataByCase(PipeCase.Cross, 0).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.Cross, 0).triangles;
+                break;
+
+            //entrance/exit square case
+            case PipeConnections.Exists | PipeConnections.End:
+                vertices = GetRotatedMeshDataByCase(PipeCase.Straight, 0).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.Straight, 0).triangles;
+                break;
+
+            //first entrance case
+            case PipeConnections.Exists | PipeConnections.StartOfMaze:
+                vertices = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 0).vertices;
+                triangles = GetRotatedMeshDataByCase(PipeCase.DeadEnd, 0).triangles;
+                break;
+
+
+            //this will only be reached when there is a single point on the maze without any connections (we will not render these)
+            default:
+                vertices = null;
+                triangles = null;
+                break;
 
         }
-
+        return new MeshData { vertices = vertices, triangles = triangles };
     }
 
-    void OnDestroy()
-    {
-        meshDataCrossCaseVerts.Dispose();
-        meshDataCrossCaseTris.Dispose();
-
-        meshDataTCaseVerts.Dispose();
-        meshDataTCaseTris.Dispose();
-
-        meshDataLCaseVerts.Dispose();
-        meshDataLCaseTris.Dispose();
-
-        meshDataStraightCaseVerts.Dispose();
-        meshDataStraightCaseTris.Dispose();
-
-        meshDataDeadEndCaseVerts.Dispose();
-        meshDataDeadEndCaseTris.Dispose();
-    }
 
     static Vector3 GetPoint(float u, float v)
     {
@@ -216,6 +290,7 @@ public class PipeCases : MonoBehaviour
                     pipeCaseArray[x, y] = PipeConnections.Empty;
                     continue;
                 }
+                
                 pipeCaseArray[x, y] = PipeConnections.Exists;
                 if (mazeArray[x, y] == 1)
                 {
@@ -239,11 +314,95 @@ public class PipeCases : MonoBehaviour
                 {
                     pipeCaseArray[x, y] |= PipeConnections.End;
                 }
+                if (mazeArray[x, y] == 3)
+                {
+                    pipeCaseArray[x, y] |= PipeConnections.StartOfMaze;
+                    continue;
+                }
             }
         }
 
         return pipeCaseArray;
     }
+
+    public MeshData GetRotatedMeshDataByCase(PipeCase mazeCase, int eulerAngle)
+    {
+        MeshData meshData = new MeshData();
+
+        switch (mazeCase)
+        {
+            case PipeCase.Invalid: //invalid
+                break;
+            case PipeCase.DeadEnd: // dead end case
+                {
+                    float3[] vertsArray = new float3[meshDataDeadEndCaseVerts.Length];
+                    meshDataDeadEndCaseVerts.CopyTo(vertsArray, 0);
+                    int[] trisArray = new int[meshDataDeadEndCaseTris.Length];
+                    meshDataDeadEndCaseTris.CopyTo(trisArray, 0);
+                    meshData = new MeshData { vertices = vertsArray, triangles = trisArray };
+                    break;
+                }
+            case PipeCase.L: // L case
+                //meshDataNative = new MeshDataNative { vertices = (float3[])meshDataLCase.vertices.Clone(), triangles = (int[])meshDataLCase.triangles.Clone() };//GetLMeshData();
+                {
+                    float3[] vertsArray = new float3[meshDataLCaseVerts.Length];
+                    meshDataLCaseVerts.CopyTo(vertsArray, 0);
+                    int[] trisArray = new int[meshDataLCaseTris.Length];
+                    meshDataLCaseTris.CopyTo(trisArray, 0);
+                    meshData = new MeshData { vertices = vertsArray, triangles = trisArray };
+                    break;
+                }
+            case PipeCase.T: // T-Junction case
+                //meshDataNative = new MeshDataNative { vertices = (float3[])meshDataTCase.vertices.Clone(), triangles = (int[])meshDataTCase.triangles.Clone() };//GetTMeshData();
+                {
+                    float3[] vertsArray = new float3[meshDataTCaseVerts.Length];
+                    meshDataTCaseVerts.CopyTo(vertsArray, 0);
+                    int[] trisArray = new int[meshDataTCaseTris.Length];
+                    meshDataTCaseTris.CopyTo(trisArray, 0);
+                    meshData = new MeshData { vertices = vertsArray, triangles = trisArray };
+                    break;
+                }
+            case PipeCase.Cross: // crossroads case
+                GetTMeshData();
+                //meshDataNative = new MeshDataNative { vertices = (float3[])meshDataCrossCase.vertices.Clone(), triangles = (int[])meshDataCrossCase.triangles.Clone() };//GetCrossMeshData();
+                {
+                    float3[] vertsArray = new float3[meshDataCrossCaseVerts.Length];
+                    meshDataCrossCaseVerts.CopyTo(vertsArray, 0);
+                    int[] trisArray = new int[meshDataCrossCaseTris.Length];
+                    meshDataCrossCaseTris.CopyTo(trisArray, 0);
+                    meshData = new MeshData { vertices = vertsArray, triangles = trisArray };
+                    break;
+                }
+            case PipeCase.Straight: // straight pipe case
+                //meshDataNative = new MeshDataNative { vertices = (float3[])meshDataStraightCase.vertices.Clone(), triangles = (int[])meshDataStraightCase.triangles.Clone() };//GetStraightMeshData();
+                {
+                    float3[] vertsArray = new float3[meshDataStraightCaseVerts.Length];
+                    meshDataStraightCaseVerts.CopyTo(vertsArray, 0);
+                    int[] trisArray = new int[meshDataStraightCaseTris.Length];
+                    meshDataStraightCaseTris.CopyTo(trisArray, 0);
+                    meshData = new MeshData { vertices = vertsArray, triangles = trisArray };
+                    break;
+                }
+            default: //invalid
+                break;
+        }
+
+        //rotate all vertices around pivot (centre)
+        Quaternion rotationQuaternion = new Quaternion();
+        rotationQuaternion.eulerAngles = new Vector3(0, eulerAngle, 0);
+
+        Vector3 centre = new Vector3(0, 0, squareSize / 2);
+
+        for (int i = 0; i < meshData.vertices.Length; i++)
+        {
+            meshData.vertices[i] = rotationQuaternion * ((Vector3)meshData.vertices[i] - centre) + centre;
+        }
+
+        return meshData; // new MeshData() { vertices = Vertices.ToArray(), triangles = Triangles.ToArray() };
+    }
+
+
+    // Below functions are ran once at the start of the program, to generate all possible pipe cases.
 
     public static MeshData GetCrossMeshData()
     {
@@ -365,12 +524,6 @@ public class PipeCases : MonoBehaviour
             VertArray2Intersect[i] += new float3(torusRadius, 0, 0);
         }
 
-        //List<Vector3> temp = new List<Vector3>();
-        //for (int i = 0; i < (pipeSegments - 1); i++)
-        //{
-        //    temp.Add(new Vector3(0f, 0f, 0f));
-        //}
-
         for (int i = 0; i < (pipeSegments - 1); i++)
         {
             if (!((i >= (3 * (pipeSegments - 1) / 4)) || (i <= ((pipeSegments) / 4))))
@@ -378,8 +531,6 @@ public class PipeCases : MonoBehaviour
                 VertArray1Intersect[VertArray1Intersect.Count - i] = VertArray2Intersect[(i + pipeSegments / 2) % (pipeSegments - 1)];
             }
         }
-
-        //Debug.LogError(VertArray1.Count + "    " + VertArray1Intersect.Count);
 
         List<float3> ArrayA = new List<float3>();
 
@@ -551,17 +702,6 @@ public class PipeCases : MonoBehaviour
         {
             Vertices[i] -= new float3(torusRadius, 0, 0);
         }
-        //rotate all vertices around pivot (centre) to normalise rotation
-        //Quaternion rotationQuaternion = new Quaternion();
-        //rotationQuaternion.eulerAngles = new Vector3(0, 0, 0.5f * 360 / (pipeSegments-1));
-
-        //Vector3 centre = new Vector3(0, 0, squareSize / 2);
-
-        //for (int i = 0; i < Vertices.Count; i++)
-        //{
-        //    Vertices[i] = rotationQuaternion * ((Vector3)Vertices[i] - centre) + centre;
-        //}
-
 
         //populate triangles list
 
@@ -633,17 +773,6 @@ public class PipeCases : MonoBehaviour
         {
             Vertices[i] -= new float3(torusRadius, 0, 0);
         }
-        //rotate all vertices around pivot (centre) to normalise rotation
-        //Quaternion rotationQuaternion = new Quaternion();
-        //rotationQuaternion.eulerAngles = new Vector3(0, 0, 0.5f * 360 / (pipeSegments-1));
-
-        //Vector3 centre = new Vector3(0, 0, squareSize / 2);
-
-        //for (int i = 0; i < Vertices.Count; i++)
-        //{
-        //    Vertices[i] = rotationQuaternion * ((Vector3)Vertices[i] - centre) + centre;
-        //}
-
 
         //populate triangles list
 
@@ -831,12 +960,6 @@ public class PipeCases : MonoBehaviour
             VertArray2Intersect[i] += new float3(torusRadius, 0, 0);
         }
 
-        //List<Vector3> temp = new List<Vector3>();
-        //for (int i = 0; i < (pipeSegments - 1); i++)
-        //{
-        //    temp.Add(new Vector3(0f, 0f, 0f));
-        //}
-
         for (int i = 0; i < (pipeSegments - 1); i++)
         {
             if (!((i >= (3 * (pipeSegments - 1) / 4)) || (i <= ((pipeSegments) / 4))))
@@ -845,8 +968,6 @@ public class PipeCases : MonoBehaviour
                 VertArray1Intersect[VertArray1Intersect.Count - i] = VertArray2Intersect[(i + pipeSegments / 2) % (pipeSegments - 1)];
             }
         }
-
-        //Debug.LogError(VertArray1.Count + "    " + VertArray1Intersect.Count);
 
         List<float3> ArrayA = new List<float3>();
 
@@ -943,85 +1064,6 @@ public class PipeCases : MonoBehaviour
         return outputMeshData;
     }
 
-
-
-
-
-    public MeshDataNative GetRotatedMeshDataByCase(PipeCase mazeCase, int eulerAngle)
-    {
-        MeshDataNative meshDataNative = new MeshDataNative();
-
-        switch (mazeCase)
-        {
-            case PipeCase.Invalid: //invalid
-                break;
-            case PipeCase.DeadEnd: // dead end case
-                {
-                    NativeArray<float3> vertsArray = new NativeArray<float3>(meshDataDeadEndCaseVerts.Length, Allocator.Temp);
-                    meshDataDeadEndCaseVerts.CopyTo(vertsArray);
-                    NativeArray<int> trisArray = new NativeArray<int>(meshDataDeadEndCaseTris.Length, Allocator.Temp);
-                    meshDataDeadEndCaseTris.CopyTo(trisArray);
-                    meshDataNative = new MeshDataNative { vertices = vertsArray, triangles = trisArray };
-                    break;
-                }
-            case PipeCase.L: // L case
-                //meshDataNative = new MeshDataNative { vertices = (float3[])meshDataLCase.vertices.Clone(), triangles = (int[])meshDataLCase.triangles.Clone() };//GetLMeshData();
-                {
-                    NativeArray<float3> vertsArray = new NativeArray<float3>(meshDataLCaseVerts.Length, Allocator.Temp);
-                    meshDataLCaseVerts.CopyTo(vertsArray);
-                    NativeArray<int> trisArray = new NativeArray<int>(meshDataLCaseTris.Length, Allocator.Temp);
-                    meshDataLCaseTris.CopyTo(trisArray);
-                    meshDataNative = new MeshDataNative { vertices = vertsArray, triangles = trisArray };
-                    break;
-                }
-            case PipeCase.T: // T-Junction case
-                //meshDataNative = new MeshDataNative { vertices = (float3[])meshDataTCase.vertices.Clone(), triangles = (int[])meshDataTCase.triangles.Clone() };//GetTMeshData();
-                {
-                    NativeArray<float3> vertsArray = new NativeArray<float3>(meshDataTCaseVerts.Length, Allocator.Temp);
-                    meshDataTCaseVerts.CopyTo(vertsArray);
-                    NativeArray<int> trisArray = new NativeArray<int>(meshDataTCaseTris.Length, Allocator.Temp);
-                    meshDataTCaseTris.CopyTo(trisArray);
-                    meshDataNative = new MeshDataNative { vertices = vertsArray, triangles = trisArray };
-                    break;
-                }
-            case PipeCase.Cross: // crossroads case
-                GetTMeshData();
-                //meshDataNative = new MeshDataNative { vertices = (float3[])meshDataCrossCase.vertices.Clone(), triangles = (int[])meshDataCrossCase.triangles.Clone() };//GetCrossMeshData();
-                {
-                    NativeArray<float3> vertsArray = new NativeArray<float3>(meshDataCrossCaseVerts.Length, Allocator.Temp);
-                    meshDataCrossCaseVerts.CopyTo(vertsArray);
-                    NativeArray<int> trisArray = new NativeArray<int>(meshDataCrossCaseTris.Length, Allocator.Temp);
-                    meshDataCrossCaseTris.CopyTo(trisArray);
-                    meshDataNative = new MeshDataNative { vertices = vertsArray, triangles = trisArray };
-                    break;
-                }
-            case PipeCase.Straight: // straight pipe case
-                //meshDataNative = new MeshDataNative { vertices = (float3[])meshDataStraightCase.vertices.Clone(), triangles = (int[])meshDataStraightCase.triangles.Clone() };//GetStraightMeshData();
-                {
-                    NativeArray<float3> vertsArray = new NativeArray<float3>(meshDataStraightCaseVerts.Length, Allocator.Temp);
-                    meshDataStraightCaseVerts.CopyTo(vertsArray);
-                    NativeArray<int> trisArray = new NativeArray<int>(meshDataStraightCaseTris.Length, Allocator.Temp);
-                    meshDataStraightCaseTris.CopyTo(trisArray);
-                    meshDataNative = new MeshDataNative { vertices = vertsArray, triangles = trisArray };
-                    break;
-                }
-            default: //invalid
-                break;
-        }
-
-        //rotate all vertices around pivot (centre)
-        Quaternion rotationQuaternion = new Quaternion();
-        rotationQuaternion.eulerAngles = new Vector3(0, eulerAngle, 0);
-
-        Vector3 centre = new Vector3(0, 0, squareSize / 2);
-
-        for (int i = 0; i < meshDataNative.vertices.Length; i++)
-        {
-            meshDataNative.vertices[i] = rotationQuaternion * ((Vector3)meshDataNative.vertices[i] - centre) + centre;
-        }
-
-        return meshDataNative; // new MeshData() { vertices = Vertices.ToArray(), triangles = Triangles.ToArray() };
-    }
 
 
 }
