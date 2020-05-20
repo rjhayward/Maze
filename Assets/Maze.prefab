@@ -13,9 +13,10 @@ GameObject:
   - component: {fileID: 5741880869474551554}
   - component: {fileID: 5741880869474551564}
   - component: {fileID: 5741880869474551555}
+  - component: {fileID: 2899678078739653905}
   m_Layer: 0
   m_Name: Maze
-  m_TagString: Untagged
+  m_TagString: MazeWall
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -59,6 +60,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mesh: {fileID: 0}
+  material0: {fileID: 2100000, guid: b32739538a682ec4ebed92fcaecfca21, type: 2}
 --- !u!33 &5741880869474551564
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -86,7 +88,8 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 15303, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: b32739538a682ec4ebed92fcaecfca21, type: 2}
+  - {fileID: 2100000, guid: 3313b7bcde895894ab7179f57983e2ef, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -108,3 +111,17 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &2899678078739653905
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5741880869474551552}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 4
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}

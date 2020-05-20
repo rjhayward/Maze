@@ -38,11 +38,12 @@ public class PipeCases : MonoBehaviour
         Right = 4,
         Down = 8,
         Left = 16,
-        End = 32
+        End = 32,
+        StartOfMaze = 64
     }
 
     public static readonly float torusRadius = 10f;
-    public static readonly float pipeRadius = 5f;
+    public static readonly float pipeRadius = 7f;
     public static readonly int pipeSegments = 17;
     public static readonly int torusSegments = 17;
     public static readonly float squareSize = 2 * torusRadius;// math.sqrt(2 * math.pow(torusRadius,2)) + pipeRadius;
@@ -66,6 +67,7 @@ public class PipeCases : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+
         MeshData meshDataCrossCase = GetCrossMeshData();
         meshDataCrossCaseVerts = new NativeArray<float3>(meshDataCrossCase.vertices.Length, Allocator.Persistent);
         for (int i = 0; i < meshDataCrossCase.vertices.Length; i++)
@@ -216,6 +218,7 @@ public class PipeCases : MonoBehaviour
                     pipeCaseArray[x, y] = PipeConnections.Empty;
                     continue;
                 }
+                
                 pipeCaseArray[x, y] = PipeConnections.Exists;
                 if (mazeArray[x, y] == 1)
                 {
@@ -238,6 +241,11 @@ public class PipeCases : MonoBehaviour
                 if (mazeArray[x, y] == 2)
                 {
                     pipeCaseArray[x, y] |= PipeConnections.End;
+                }
+                if (mazeArray[x, y] == 3)
+                {
+                    pipeCaseArray[x, y] |= PipeConnections.StartOfMaze;
+                    continue;
                 }
             }
         }

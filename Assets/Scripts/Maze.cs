@@ -5,11 +5,16 @@ using UnityEngine;
 public class Maze : MonoBehaviour
 {
     public Mesh mesh;
+    public Material material0;
 
     void Awake()
     {
         mesh = new Mesh();
         GetComponent<MeshFilter>().mesh = mesh;
         mesh.name = "Maze";
+
+        GetComponent<MeshRenderer>().materials[0] = material0;
+        //GetComponent<MeshRenderer>().materials[1] = material1;
+
     }
 }

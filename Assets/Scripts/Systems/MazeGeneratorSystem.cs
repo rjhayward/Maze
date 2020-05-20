@@ -237,7 +237,8 @@ public class MazeGeneratorSystem : SystemBase
     {
         Maze newMaze = GameObject.Instantiate<Maze>(singleton.mazePrefab);
         newMaze.transform.parent = parentMaze.transform;
-        //newMaze = newMaze.GetComponent<Maze>();
+        newMaze.material0.color = new Color(UnityEngine.Random.Range(0.3f, 1f), UnityEngine.Random.Range(0.3f, 1f), UnityEngine.Random.Range(0.3f, 1f));
+
         newMaze.mesh.Clear();
 
         newMaze.mesh.SetVertices(mazeVertices);
@@ -245,6 +246,8 @@ public class MazeGeneratorSystem : SystemBase
 
         newMaze.mesh.RecalculateBounds();
         newMaze.mesh.RecalculateNormals();
+
+        newMaze.GetComponent<MeshCollider>().sharedMesh = newMaze.mesh;
     }
 
 

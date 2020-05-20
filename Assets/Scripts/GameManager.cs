@@ -11,20 +11,24 @@ using Unity.Mathematics;
 using UnityEngine.UIElements;
 using System;
 using System.CodeDom;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
 
     [SerializeField] private Mesh shipMesh;
     [SerializeField] private Material shipMaterial;
+    [SerializeField] private Font font;
 
     Singleton singleton;
 
     EntityManager entityManager;
     PipeCases.PipeConnections[] caseArray;
     EntityArchetype mazeArchetype;
-
+    EntityArchetype shipArchetype;
     PipeCases pipeCasesField;
+
+
     // Start is called before the first frame update
     void Start()
     {
@@ -33,53 +37,13 @@ public class GameManager : MonoBehaviour
 
         entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
-        // create entity archetypes
-
-        // unused
-        EntityArchetype projectileArchetype = entityManager.CreateArchetype(
-
-            typeof(RenderMesh), typeof(LocalToWorld), typeof(RenderBounds), // required components to render
-            typeof(Translation)
-        );
-
-        EntityArchetype boidArchetype = entityManager.CreateArchetype(
-
-            typeof(RenderMesh), typeof(LocalToWorld), typeof(RenderBounds), // required components to render
-            typeof(Translation),
-            typeof(ViewAngle),
-            typeof(IsAlive)
-        );
-
-
-        // TODO split these into separate functions
-
-        EntityArchetype shipArchetype = entityManager.CreateArchetype(
-
+        shipArchetype = entityManager.CreateArchetype(
             typeof(RenderMesh), typeof(LocalToWorld), typeof(RenderBounds), // required components to render
             typeof(Translation),
             typeof(Rotation),
             typeof(IsShip)
         );
 
-        Entity shipEntity = entityManager.CreateEntity(shipArchetype);
-
-        entityManager.SetSharedComponentData(shipEntity, new RenderMesh
-        {
-            mesh = shipMesh,
-            material = shipMaterial
-        }); 
-        
-        entityManager.SetComponentData(shipEntity, new Rotation
-        {
-            Value = Quaternion.Euler(0,0,0)
-        });
-
-        entityManager.SetComponentData(shipEntity, new Translation
-        {
-            Value = new Vector3(PipeCases.torusRadius*14, -1f, 0)
-        });
-
-        // TODO split these into separate functions
         mazeArchetype = entityManager.CreateArchetype(
             typeof(IntBufferElement), //Triangles
             typeof(Float3BufferElement), //Vertices
@@ -89,30 +53,217 @@ public class GameManager : MonoBehaviour
             typeof(PipeCaseComponent) //this entity's PipeCase
         );
 
-        singleton.toAddNewMaze = true;
+        ResetGame();
+        singleton.gameState = Singleton.GameState.PreGame;
+
+        CreateShipEntity();
+
+        singleton.mazeIndex = 0;
+        singleton.numberOfMazes = 0;
+        singleton.toAddNewMaze = false;
+    }
+
+    void StartGame()
+    {
+        // create entity archetypes
+
+        CreateShipEntity();
+
+        singleton.mazeIndex = 0;
+        singleton.numberOfMazes = 0;
+        singleton.toAddNewMaze = false;
+        singleton.gameState = Singleton.GameState.InGame;
+
+    }
+
+    void CreateShipEntity()
+    {
+
+        Entity shipEntity = entityManager.CreateEntity(shipArchetype);
+
+        entityManager.SetSharedComponentData(shipEntity, new RenderMesh
+        {
+            mesh = shipMesh,
+            material = shipMaterial
+        });
+
+        entityManager.SetComponentData(shipEntity, new Rotation
+        {
+            Value = Quaternion.Euler(0, 0, 0)
+        });
+
+        entityManager.SetComponentData(shipEntity, new Translation
+        {
+            Value = new Vector3(PipeCases.torusRadius * 16, 0f, PipeCases.torusRadius*3f)
+        });
     }
 
     // Update is called once per frame
     void Update()
     {
-        Vector3 mazeExit = new Vector3(PipeCases.torusRadius * 14, 0, PipeCases.torusRadius * 32 * singleton.mazeIndex);
-
-        if (singleton.toAddNewMaze)
+        if (singleton.gameState == Singleton.GameState.GameOver)
         {
-            generateNewMaze(GetNewRandomMazeArray());
-            singleton.toAddNewMaze = false;
+            if (PlayerPrefs.HasKey("HighScore") && (singleton.mazeIndex - 1) > PlayerPrefs.GetInt("HighScore"))
+            {
+                PlayerPrefs.SetInt("HighScore", (singleton.mazeIndex - 1));
+            }
+            else
+            {
+                PlayerPrefs.SetInt("HighScore", (singleton.mazeIndex - 1));
+            }
+
+            singleton.gameState = Singleton.GameState.PostGame;
+        }
+        if (singleton.gameState == Singleton.GameState.InGame)
+        {
+            UnityEngine.Cursor.visible = false;
+            if (singleton.toAddNewMaze)
+            {
+                singleton.toAddNewMaze = false;
+                generateNewMaze(GetNewRandomMazeArray());
+            }
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                singleton.gameState = Singleton.GameState.Paused;
+            }
+        }
+        else if (singleton.gameState == Singleton.GameState.PreGame)
+        {
+            UnityEngine.Cursor.visible = true;
+            if (singleton.toAddNewMaze)
+            {
+                singleton.toAddNewMaze = false;
+                generateNewMaze(GetNewRandomMazeArray());
+            }
+        }
+        else if (singleton.gameState == Singleton.GameState.PostGame)
+        {
+            UnityEngine.Cursor.visible = true;
+        }
+        else if (singleton.gameState == Singleton.GameState.Paused)
+        {
+            UnityEngine.Cursor.visible = true;
+        }
+    }
+
+    protected void OnGUI()
+    {
+        if (PlayerPrefs.HasKey("HighScore"))
+        {
+            GameObject.Find("HighScore").GetComponent<Text>().text = "High Score: " + PlayerPrefs.GetInt("HighScore");
+        }
+        else
+        {
+            GameObject.Find("HighScore").GetComponent<Text>().text = "High Score: 0";
         }
 
-        if (Input.GetKeyDown(KeyCode.Space))
+
+        if (singleton.gameState == Singleton.GameState.InGame)
         {
-            generateNewMaze(GetNewRandomMazeArray());
+            Vector3 mazeExit = new Vector3(PipeCases.torusRadius * 16, 0, PipeCases.torusRadius * 32 * singleton.mazeIndex - 1);
+            float maxDistance = math.sqrt(math.pow(PipeCases.torusRadius * 32, 2) + math.pow(PipeCases.torusRadius * 16, 2));
+            float distanceFromExit = (mazeExit - singleton.shipLocation).magnitude;
+
+            float normalisedDistance = distanceFromExit / maxDistance;
+            normalisedDistance -= 1f;
+
+            //shipMaterial.SetColor("_Color", new Color(UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(0f, 1f)));
+            shipMaterial.SetColor("_Color", new Color(Mathf.Clamp(normalisedDistance, 0f, 1f), Mathf.Clamp(1f - normalisedDistance, 0f, 1f), 0f));
+
+
+            int level = singleton.mazeIndex - 1;
+
+            GameObject.Find("Level").GetComponent<Text>().text = "Level: " + level;
+            //GUILayout.Label("Level: " + level);
+        }
+        else if (singleton.gameState == Singleton.GameState.PreGame)
+        {
+            Vector3 mazeExit = new Vector3(PipeCases.torusRadius * 16, 0, PipeCases.torusRadius * 32 * singleton.mazeIndex - 1);
+            float maxDistance = math.sqrt(math.pow(PipeCases.torusRadius * 32, 2) + math.pow(PipeCases.torusRadius * 16, 2));
+            float distanceFromExit = (mazeExit - singleton.shipLocation).magnitude;
+
+            float normalisedDistance = distanceFromExit / maxDistance;
+            normalisedDistance -= 1f;
+
+            //shipMaterial.SetColor("_Color", new Color(UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(0f, 1f)));
+            shipMaterial.SetColor("_Color", new Color(Mathf.Clamp(normalisedDistance, 0f, 1f), Mathf.Clamp(1f - normalisedDistance, 0f, 1f), 0f));
+
+            GameObject.Find("Tubular").GetComponent<Text>().text = "tubular";
+            GameObject.Find("BelowText").GetComponent<Text>().text = "How to play:\n\nUse the A and D keys (or the arrow keys) to navigate the maze without touching any walls.\n\nPress the Spacebar for a speed boost!\n\n\nBackground track:\nPipedreaming by Ryan Hayward\n(Press M to mute/unmute)";
+
+            Rect buttonPos = new Rect((Screen.width / 2.0f) - 100, (Screen.height / 2.0f) - 50, 200, 50);
+
+            GUIStyle styleBtn = GUI.skin.button;
+
+            styleBtn.font = font;
+
+            styleBtn.fontSize = 30;
+            styleBtn.fixedHeight = 75;
+
+            if (GUI.Button(buttonPos, "Play", styleBtn) || Input.GetKeyDown(KeyCode.Space))
+            {
+                GameObject.Find("Tubular").GetComponent<Text>().text = "";
+                GameObject.Find("BelowText").GetComponent<Text>().text = "";
+                ResetGame();
+                StartGame();
+            }
+        }
+        else if (singleton.gameState == Singleton.GameState.PostGame)
+        {
+            GameObject.Find("Tubular").GetComponent<Text>().text = "game over";
+            GameObject.Find("BelowText").GetComponent<Text>().text = "How to play:\n\nUse the A and D keys (or the arrow keys) to navigate the maze without touching any walls.\n\n Press the Spacebar for a speed boost!\n\n\nBackground track:\nPipedreaming by Ryan Hayward\n(Press M to mute/unmute)";
+
+            Rect buttonPos = new Rect((Screen.width / 2.0f) - 150, (Screen.height / 2.0f) - 50, 300, 50);
+
+            GUIStyle styleBtn = GUI.skin.button;
+
+            styleBtn.font = font;
+
+            styleBtn.fontSize = 30;
+            styleBtn.fixedHeight = 75;
+
+            if (GUI.Button(buttonPos, "Play Again", styleBtn) || Input.GetKeyDown(KeyCode.Space))
+            {
+                GameObject.Find("Tubular").GetComponent<Text>().text = "";
+                GameObject.Find("BelowText").GetComponent<Text>().text = "";
+                ResetGame();
+                StartGame();
+            }
+        }
+        else if (singleton.gameState == Singleton.GameState.Paused)
+        {
+            Time.timeScale = 0.0f;
+            GameObject.Find("Tubular").GetComponent<Text>().text = "Paused";
+
+            Rect buttonPos = new Rect((Screen.width / 2.0f) - 150, (Screen.height / 2.0f) - 50, 300, 50);
+
+            GUIStyle styleBtn = GUI.skin.button;
+
+            styleBtn.font = font;
+
+            styleBtn.fontSize = 30;
+            styleBtn.fixedHeight = 75;
+
+            if (GUI.Button(buttonPos, "Resume", styleBtn) || Input.GetKeyDown(KeyCode.Space))
+            {
+                Time.timeScale = 1.0f;
+                GameObject.Find("Tubular").GetComponent<Text>().text = "";
+                singleton.gameState = Singleton.GameState.InGame;
+            }
         }
 
-        if (Input.GetTouch(0).phase == TouchPhase.Began)
-        {
-            generateNewMaze(GetNewRandomMazeArray());
-        }
+    }
 
+    void ResetGame()
+    {
+        NativeArray<Entity> allEntities = entityManager.GetAllEntities();
+        entityManager.DestroyEntity(allEntities);
+        GameObject[] mazeWallArray = GameObject.FindGameObjectsWithTag("MazeWall");
+
+        for (int i = 0; i < mazeWallArray.Length; i++)
+        {
+            Destroy(mazeWallArray[i]);
+        }
     }
 
     void generateNewMaze(int[,] mazeArray2d)
@@ -271,9 +422,16 @@ public class GameManager : MonoBehaviour
 
             //entrance/exit square case
             case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.End:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.Cross, 0).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.Cross, 0).triangles.ToArray();
+                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.Straight, 0).vertices.ToArray();
+                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.Straight, 0).triangles.ToArray();
                 break;
+            
+            //first entrance case
+            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.StartOfMaze:
+                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.DeadEnd, 0).vertices.ToArray();
+                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.DeadEnd, 0).triangles.ToArray();
+                break;
+
 
             //this will only be reached when there is a single point on the maze without any connections (we will not render these)
             default:
@@ -326,11 +484,11 @@ public class GameManager : MonoBehaviour
         }
 
         // select first maze square
-        mazeArray[8, 0] = 1;
+        mazeArray[8, 2] = 1;
         //fill in frontier squares
-        frontierList.Add(new Coords { x = 0, y = 8 + 2 });
-        frontierList.Add(new Coords { x = 0, y = 8 - 2 });
-        frontierList.Add(new Coords { x = 0 + 2, y = 8 });
+        frontierList.Add(new Coords { x = 2, y = 8 + 2 });
+        frontierList.Add(new Coords { x = 2, y = 8 - 2 });
+        //frontierList.Add(new Coords { x = 2 + 2, y = 8 });
 
         //// select last maze square
         //mazeArray[8, 14] = 1;
@@ -351,6 +509,8 @@ public class GameManager : MonoBehaviour
                     inList = true;
                 }
             }
+
+            if (checkSquare.x == 4 && checkSquare.y == 8) inList = true;
             return inList;
         }
 
@@ -370,10 +530,10 @@ public class GameManager : MonoBehaviour
 
             for (int direction = random; direction < 4 + random; direction++)
             {
-                switch (direction%4)
+                switch (direction % 4)
                 {
                     case 0: // west
-                        if (randomFrontierSquare.y - 2 >= 0)
+                        if (randomFrontierSquare.y - 2 >= 2)
                         {
                             if (mazeArray[randomFrontierSquare.y - 2, randomFrontierSquare.x] == 1)
                             {
@@ -384,7 +544,7 @@ public class GameManager : MonoBehaviour
                         }
                         break;
                     case 1: // north
-                        if (randomFrontierSquare.x - 2 >= 0)
+                        if (randomFrontierSquare.x - 2 >= 2)
                         {
                             if (mazeArray[randomFrontierSquare.y, randomFrontierSquare.x - 2] == 1)
                             {
@@ -439,7 +599,7 @@ public class GameManager : MonoBehaviour
                 }
 
 
-                if (!InList(newFrontierSquare, frontierList) && !InList(newFrontierSquare, visitedFrontierList) && newFrontierSquare.x >= 0 && newFrontierSquare.x < 15 && newFrontierSquare.y >= 0 && newFrontierSquare.y < 15)
+                if (!InList(newFrontierSquare, frontierList) && !InList(newFrontierSquare, visitedFrontierList) && newFrontierSquare.x >= 2 && newFrontierSquare.x < 15 && newFrontierSquare.y >= 2 && newFrontierSquare.y < 15)
                 {
                     visitedFrontierList.Add(newFrontierSquare);
                     frontierList.Add(newFrontierSquare);
@@ -454,9 +614,19 @@ public class GameManager : MonoBehaviour
 
         // add final square (as it is an evenly sized array)
         mazeArray[8, 15] = 2;
+        if (singleton.mazeIndex == 0)
+        {
+            // add initial square as a start square
+            mazeArray[8, 0] = 3;
+        }
+        else
+        {
+            // add initial square as a start square
+            mazeArray[8, 0] = 2;
+        }
 
-        // change initial square to a start square
-        mazeArray[8, 0] = 2;
+
+        mazeArray[8, 1] = 1;
 
         return mazeArray;
     }
