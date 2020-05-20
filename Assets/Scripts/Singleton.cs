@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class Singleton : MonoBehaviour
 {
@@ -34,6 +32,9 @@ public class Singleton : MonoBehaviour
 
     [HideInInspector]
     public GameState gameState;
+
+    [HideInInspector]
+    public int sessionHighScore;
 
     void Start()
     {

@@ -1,24 +1,18 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Jobs;
 using Unity.Entities;
 using Unity.Transforms;
 using Unity.Collections;
 using Unity.Rendering;
-using Unity.Jobs;
 using Unity.Mathematics;
-using UnityEngine.UIElements;
-using System;
-using System.CodeDom;
 using UnityEngine.UI;
+using Unity.Entities.UniversalDelegates;
 
 public class GameManager : MonoBehaviour
 {
-
-    [SerializeField] private Mesh shipMesh;
-    [SerializeField] private Material shipMaterial;
-    [SerializeField] private Font font;
+    public Mesh shipMesh;
+    public Material shipMaterial;
+    public Font font;
 
     Singleton singleton;
 
@@ -61,41 +55,7 @@ public class GameManager : MonoBehaviour
         singleton.mazeIndex = 0;
         singleton.numberOfMazes = 0;
         singleton.toAddNewMaze = false;
-    }
-
-    void StartGame()
-    {
-        // create entity archetypes
-
-        CreateShipEntity();
-
-        singleton.mazeIndex = 0;
-        singleton.numberOfMazes = 0;
-        singleton.toAddNewMaze = false;
-        singleton.gameState = Singleton.GameState.InGame;
-
-    }
-
-    void CreateShipEntity()
-    {
-
-        Entity shipEntity = entityManager.CreateEntity(shipArchetype);
-
-        entityManager.SetSharedComponentData(shipEntity, new RenderMesh
-        {
-            mesh = shipMesh,
-            material = shipMaterial
-        });
-
-        entityManager.SetComponentData(shipEntity, new Rotation
-        {
-            Value = Quaternion.Euler(0, 0, 0)
-        });
-
-        entityManager.SetComponentData(shipEntity, new Translation
-        {
-            Value = new Vector3(PipeCases.torusRadius * 16, 0f, PipeCases.torusRadius*3f)
-        });
+        singleton.sessionHighScore = 1;
     }
 
     // Update is called once per frame
@@ -103,12 +63,17 @@ public class GameManager : MonoBehaviour
     {
         if (singleton.gameState == Singleton.GameState.GameOver)
         {
-            if (PlayerPrefs.HasKey("HighScore") && (singleton.mazeIndex - 1) > PlayerPrefs.GetInt("HighScore"))
+            if (PlayerPrefs.HasKey("HighScore"))
             {
-                PlayerPrefs.SetInt("HighScore", (singleton.mazeIndex - 1));
+                if ((singleton.mazeIndex - 1) > PlayerPrefs.GetInt("HighScore"))
+                {
+                    singleton.sessionHighScore = singleton.mazeIndex - 1;
+                    PlayerPrefs.SetInt("HighScore", (singleton.mazeIndex - 1));
+                }
             }
-            else
+            else if ((singleton.mazeIndex - 1) > singleton.sessionHighScore)
             {
+                singleton.sessionHighScore = singleton.mazeIndex - 1;
                 PlayerPrefs.SetInt("HighScore", (singleton.mazeIndex - 1));
             }
 
@@ -150,13 +115,19 @@ public class GameManager : MonoBehaviour
     {
         if (PlayerPrefs.HasKey("HighScore"))
         {
-            GameObject.Find("HighScore").GetComponent<Text>().text = "High Score: " + PlayerPrefs.GetInt("HighScore");
+            if (PlayerPrefs.GetInt("HighScore") > singleton.sessionHighScore)
+            {
+                GameObject.Find("HighScore").GetComponent<Text>().text = "High Score: " + PlayerPrefs.GetInt("HighScore");
+            }
+            else
+            {
+                GameObject.Find("HighScore").GetComponent<Text>().text = "High Score: " + singleton.sessionHighScore;
+            }
         }
         else
         {
-            GameObject.Find("HighScore").GetComponent<Text>().text = "High Score: 0";
+            GameObject.Find("HighScore").GetComponent<Text>().text = "High Score: " + singleton.sessionHighScore;
         }
-
 
         if (singleton.gameState == Singleton.GameState.InGame)
         {
@@ -167,14 +138,11 @@ public class GameManager : MonoBehaviour
             float normalisedDistance = distanceFromExit / maxDistance;
             normalisedDistance -= 1f;
 
-            //shipMaterial.SetColor("_Color", new Color(UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(0f, 1f)));
             shipMaterial.SetColor("_Color", new Color(Mathf.Clamp(normalisedDistance, 0f, 1f), Mathf.Clamp(1f - normalisedDistance, 0f, 1f), 0f));
-
 
             int level = singleton.mazeIndex - 1;
 
             GameObject.Find("Level").GetComponent<Text>().text = "Level: " + level;
-            //GUILayout.Label("Level: " + level);
         }
         else if (singleton.gameState == Singleton.GameState.PreGame)
         {
@@ -185,7 +153,6 @@ public class GameManager : MonoBehaviour
             float normalisedDistance = distanceFromExit / maxDistance;
             normalisedDistance -= 1f;
 
-            //shipMaterial.SetColor("_Color", new Color(UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(0f, 1f), UnityEngine.Random.Range(0f, 1f)));
             shipMaterial.SetColor("_Color", new Color(Mathf.Clamp(normalisedDistance, 0f, 1f), Mathf.Clamp(1f - normalisedDistance, 0f, 1f), 0f));
 
             GameObject.Find("Tubular").GetComponent<Text>().text = "tubular";
@@ -253,7 +220,17 @@ public class GameManager : MonoBehaviour
         }
 
     }
+    void StartGame()
+    {
+        // create entity archetypes
+        CreateShipEntity();
 
+        singleton.mazeIndex = 0;
+        singleton.numberOfMazes = 0;
+        singleton.toAddNewMaze = false;
+        singleton.gameState = Singleton.GameState.InGame;
+
+    }
     void ResetGame()
     {
         NativeArray<Entity> allEntities = entityManager.GetAllEntities();
@@ -264,6 +241,26 @@ public class GameManager : MonoBehaviour
         {
             Destroy(mazeWallArray[i]);
         }
+    }
+    void CreateShipEntity()
+    {
+        Entity shipEntity = entityManager.CreateEntity(shipArchetype);
+
+        entityManager.SetSharedComponentData(shipEntity, new RenderMesh
+        {
+            mesh = shipMesh,
+            material = shipMaterial
+        });
+
+        entityManager.SetComponentData(shipEntity, new Rotation
+        {
+            Value = Quaternion.Euler(0, 0, 0)
+        });
+
+        entityManager.SetComponentData(shipEntity, new Translation
+        {
+            Value = new Vector3(PipeCases.torusRadius * 16, 0f, PipeCases.torusRadius * 3f)
+        });
     }
 
     void generateNewMaze(int[,] mazeArray2d)
@@ -311,7 +308,7 @@ public class GameManager : MonoBehaviour
                 Value = (int)pipeCase
             });
 
-            PipeCases.MeshData meshDataForCase = GetMeshDataByCase(pipeCase);
+            PipeCases.MeshData meshDataForCase = pipeCasesField.GetMeshDataByCase(pipeCase);
 
             DynamicBuffer <Float3BufferElement> verticesBuffer =  entityManager.AddBuffer<Float3BufferElement>(mazeEntities[i]);
             float3[] verticesForCase = meshDataForCase.vertices;
@@ -324,7 +321,6 @@ public class GameManager : MonoBehaviour
                 }
             }
             
-
             DynamicBuffer < IntBufferElement > trianglesBuffer = entityManager.AddBuffer<IntBufferElement>(mazeEntities[i]);
             int[] trianglesForCase = meshDataForCase.triangles;
 
@@ -343,112 +339,12 @@ public class GameManager : MonoBehaviour
         singleton.mazeNeedsUpdate = true;
     }
 
-
-    PipeCases.MeshData GetMeshDataByCase(PipeCases.PipeConnections pipeCase)
-    {
-        float3[] vertices;
-        int[] triangles;
-        switch (pipeCase)
-        {
-            // Straight cases
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Left | PipeCases.PipeConnections.Right:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.Straight, 0).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.Straight, 0).triangles.ToArray();
-                break;
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Up | PipeCases.PipeConnections.Down:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.Straight, 90).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.Straight, 90).triangles.ToArray();
-                break;
-
-            // L cases
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Down | PipeCases.PipeConnections.Right:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.L, 0).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.L, 0).triangles.ToArray();
-                break;
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Down | PipeCases.PipeConnections.Left:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.L, 90).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.L, 90).triangles.ToArray();
-                break;
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Up | PipeCases.PipeConnections.Left:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.L, 180).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.L, 180).triangles.ToArray();
-                break;
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Up | PipeCases.PipeConnections.Right:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.L, 270).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.L, 270).triangles.ToArray();
-                break;
-
-            // T cases
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Down | PipeCases.PipeConnections.Up | PipeCases.PipeConnections.Right:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.T, 0).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.T, 0).triangles.ToArray();
-                break;
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Left | PipeCases.PipeConnections.Right | PipeCases.PipeConnections.Down:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.T, 90).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.T, 90).triangles.ToArray();
-                break;
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Up | PipeCases.PipeConnections.Down | PipeCases.PipeConnections.Left:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.T, 180).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.T, 180).triangles.ToArray();
-                break;
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Left | PipeCases.PipeConnections.Right | PipeCases.PipeConnections.Up:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.T, 270).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.T, 270).triangles.ToArray();
-                break;
-
-            // DeadEnd cases
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Left:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.DeadEnd, 0).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.DeadEnd, 0).triangles.ToArray();
-                break;
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Up:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.DeadEnd, 90).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.DeadEnd, 90).triangles.ToArray();
-                break;
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Right:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.DeadEnd, 180).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.DeadEnd, 180).triangles.ToArray();
-                break;
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Down:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.DeadEnd, 270).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.DeadEnd, 270).triangles.ToArray();
-                break;
-
-            // Cross case
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.Up | PipeCases.PipeConnections.Down | PipeCases.PipeConnections.Left | PipeCases.PipeConnections.Right:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.Cross, 0).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.Cross, 0).triangles.ToArray();
-                break;
-
-            //entrance/exit square case
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.End:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.Straight, 0).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.Straight, 0).triangles.ToArray();
-                break;
-            
-            //first entrance case
-            case PipeCases.PipeConnections.Exists | PipeCases.PipeConnections.StartOfMaze:
-                vertices = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.DeadEnd, 0).vertices.ToArray();
-                triangles = pipeCasesField.GetRotatedMeshDataByCase(PipeCases.PipeCase.DeadEnd, 0).triangles.ToArray();
-                break;
-
-
-            //this will only be reached when there is a single point on the maze without any connections (we will not render these)
-            default:
-                vertices = null;
-                triangles = null;
-                break;
-            
-        }
-        return new PipeCases.MeshData {vertices = vertices, triangles = triangles };
-    }
-
     struct Coords
     {
         public int x;
         public int y;
     }
-
+    // Generate a random maze array using a modified version of Prim's shortest path algorithm
     int[,] GetNewRandomMazeArray()
     {
         List<Coords> frontierList = new List<Coords>();
@@ -463,7 +359,7 @@ public class GameManager : MonoBehaviour
         //    {0,0,0,1,0,0,1,0,0,0,1,1,1,1,1,0},
         //    {0,1,1,1,1,1,1,0,0,0,0,0,1,0,1,1},
         //    {0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,0},
-        //    {2,1,1,1,1,1,1,0,1,0,1,1,1,1,1,2}, // these edges are guaranteed part of the maze
+        //    {2,1,1,1,1,1,1,0,1,0,1,1,1,1,1,2}, // these edges are guaranteed part of the maze- the rest is generated randomly
         //    {0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0},
         //    {1,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1},
         //    {0,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1},
@@ -489,14 +385,6 @@ public class GameManager : MonoBehaviour
         frontierList.Add(new Coords { x = 2, y = 8 + 2 });
         frontierList.Add(new Coords { x = 2, y = 8 - 2 });
         //frontierList.Add(new Coords { x = 2 + 2, y = 8 });
-
-        //// select last maze square
-        //mazeArray[8, 14] = 1;
-        ////fill in frontier squares
-        //frontierList.Add(new Coords { x = 14, y = 8 + 2 });
-        //frontierList.Add(new Coords { x = 14, y = 8 - 2 });
-        //frontierList.Add(new Coords { x = 14 - 2, y = 8 });
-
 
         bool InList(Coords checkSquare, List<Coords> list)
         {

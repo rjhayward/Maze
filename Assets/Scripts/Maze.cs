@@ -14,7 +14,6 @@ public class Maze : MonoBehaviour
         mesh.name = "Maze";
 
         GetComponent<MeshRenderer>().materials[0] = material0;
-        //GetComponent<MeshRenderer>().materials[1] = material1;
 
     }
 }
